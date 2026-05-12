@@ -32,12 +32,12 @@ fun getAbi() = if (hasProperty("abi")) {
 
 android {
     namespace = "com.ammar.wallflow"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.ammar.wallflow"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 20
         versionName = "2.4.3"
 
