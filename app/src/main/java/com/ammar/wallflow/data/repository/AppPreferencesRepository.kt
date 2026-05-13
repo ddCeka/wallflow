@@ -383,16 +383,6 @@ class AppPreferencesRepository @Inject constructor(
         }
     }
 
-    suspend fun updateAcraEnabled(enable: Boolean) = withContext(ioDispatcher) {
-        dataStore.edit {
-            it.updateAcraEnabled(enable)
-        }
-    }
-
-    private fun MutablePreferences.updateAcraEnabled(enable: Boolean) {
-        set(PreferencesKeys.ENABLE_ACRA, enable)
-    }
-
     private suspend fun mapAppPreferences(preferences: Preferences): AppPreferences {
         val homeRedditSearch = getHomeRedditSearch(preferences)
         return AppPreferences(
@@ -415,7 +405,6 @@ class AppPreferencesRepository @Inject constructor(
             mainWallhavenSearch = getMainWallhavenSearch(preferences),
             mainRedditSearch = getMainRedditSearch(preferences),
             viewedWallpapersPreferences = getViewedWallpapersPreferences(preferences),
-            acraEnabled = preferences[PreferencesKeys.ENABLE_ACRA] ?: true,
             telegramPreferences = getTelegramPreferences(preferences),
             redditSubredditFilter = getRedditSubredditFilter(preferences),
         )
@@ -810,7 +799,6 @@ class AppPreferencesRepository @Inject constructor(
                     updateMainSearch(appPreferences.mainRedditSearch)
                 }
                 updateViewedWallpapersPreferences(appPreferences.viewedWallpapersPreferences)
-                updateAcraEnabled(appPreferences.acraEnabled)
                 updateTelegramPreferences(appPreferences.telegramPreferences)
                 if (appPreferences.downloadLocation != null) {
                     set(PreferencesKeys.DOWNLOAD_LOCATION, appPreferences.downloadLocation.toString())

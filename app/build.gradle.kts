@@ -39,8 +39,8 @@ android {
         applicationId = "com.ammar.wallflow"
         minSdk = 24
         targetSdk = 35
-        versionCode = 22
-        versionName = "2.6.0"
+        versionCode = 23
+        versionName = "2.6.1"
 
         val abi = getAbi()
         ndk {
@@ -347,11 +347,6 @@ dependencies {
     implementation(libs.androidx.profileinstaller)
     baselineProfile(project(":benchmarks"))
 
-    // crash reporting
-    implementation(libs.acra.core)
-    implementation(libs.auto.service.annotations)
-    ksp(libs.auto.service.ksp)
-
     // Local tests: jUnit, coroutines, Android runner
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
@@ -362,7 +357,6 @@ dependencies {
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.kotlin.test.junit)
-    androidTestImplementation(libs.kotlinx.coroutines.guava)
     androidTestUtil(libs.androidx.test.services)
 
     // mockk

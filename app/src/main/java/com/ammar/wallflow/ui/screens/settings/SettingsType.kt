@@ -11,7 +11,6 @@ enum class SettingsType {
     VIEWED_WALLPAPERS,
     OBJECT_DETECTION,
     AUTO_WALLPAPER,
-    CRASH_REPORTS,
 }
 
 enum class SettingsExtraType {

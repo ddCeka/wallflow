@@ -118,7 +118,6 @@ object PreferencesKeys {
     val LOCAL_DIRS = stringSetPreferencesKey("local_dirs")
     val VIEWED_WALLPAPERS_ENABLED = booleanPreferencesKey("viewed_wallpapers_enabled")
     val VIEWED_WALLPAPERS_LOOK = stringPreferencesKey("viewed_wallpapers_look")
-    val ENABLE_ACRA = booleanPreferencesKey("enable_acra")
     val TELEGRAM_ENABLED = booleanPreferencesKey("telegram_enabled")
     val TELEGRAM_BOT_TOKEN = stringPreferencesKey("telegram_bot_token")
     val TELEGRAM_CHAT_ID = stringPreferencesKey("telegram_chat_id")
