@@ -9,6 +9,7 @@ import androidx.core.net.toFile
 import androidx.core.net.toUri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.Constraints
 import androidx.work.WorkInfo
 import com.ammar.wallflow.EFFICIENT_DET_LITE_0_MODEL_NAME
 import com.ammar.wallflow.R
@@ -17,10 +18,14 @@ import com.ammar.wallflow.data.db.entity.search.toSavedSearch
 import com.ammar.wallflow.data.db.entity.toModel
 import com.ammar.wallflow.data.preferences.AppPreferences
 import com.ammar.wallflow.data.preferences.AutoWallpaperPreferences
+import com.ammar.wallflow.data.preferences.LayoutPreferences
 import com.ammar.wallflow.data.preferences.LookAndFeelPreferences
 import com.ammar.wallflow.data.preferences.ObjectDetectionPreferences
+import com.ammar.wallflow.data.preferences.TelegramPreferences
 import com.ammar.wallflow.data.preferences.ViewedWallpapersLook
 import com.ammar.wallflow.data.repository.AppPreferencesRepository
+import com.ammar.wallflow.data.repository.FavoritesRepository
+import com.ammar.wallflow.data.repository.LightDarkRepository
 import com.ammar.wallflow.data.repository.ObjectDetectionModelRepository
 import com.ammar.wallflow.data.repository.SavedSearchRepository
 import com.ammar.wallflow.data.repository.ViewedRepository
@@ -30,11 +35,14 @@ import com.ammar.wallflow.extensions.rootCause
 import com.ammar.wallflow.extensions.trimAll
 import com.ammar.wallflow.extensions.workManager
 import com.ammar.wallflow.model.ObjectDetectionModel
+import com.ammar.wallflow.model.WallpaperTarget
 import com.ammar.wallflow.model.local.LocalDirectory
+import com.ammar.wallflow.model.search.RedditSearch
 import com.ammar.wallflow.model.search.SavedSearch
 import com.ammar.wallflow.utils.DownloadManager
 import com.ammar.wallflow.utils.DownloadStatus
 import com.ammar.wallflow.utils.ExifWriteType
+import com.ammar.wallflow.utils.combine
 import com.ammar.wallflow.utils.getLocalDirs
 import com.ammar.wallflow.utils.objectdetection.validateModelFile
 import com.ammar.wallflow.workers.AutoWallpaperWorker
@@ -52,11 +60,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.datetime.DateTimePeriod
 import kotlinx.datetime.Instant
 
 @HiltViewModel
@@ -67,9 +75,12 @@ class SettingsViewModel @Inject constructor(
     private val downloadManager: DownloadManager,
     private val savedSearchRepository: SavedSearchRepository,
     private val viewedRepository: ViewedRepository,
+    lightDarkRepository: LightDarkRepository,
+    favoritesRepository: FavoritesRepository,
 ) : AndroidViewModel(application) {
     private val localUiStateFlow = MutableStateFlow(SettingsUiStatePartial())
     private val autoWallpaperNextRunFlow = getAutoWallpaperNextRun()
+    private val lsAutoWallpaperNextRunFlow = getLsAutoWallpaperNextRun()
     private var changeNowJob: Job? = null
 
     val uiState = combine(
@@ -78,12 +89,18 @@ class SettingsViewModel @Inject constructor(
         localUiStateFlow,
         savedSearchRepository.observeAll(),
         autoWallpaperNextRunFlow,
+        lsAutoWallpaperNextRunFlow,
+        lightDarkRepository.observeCount(),
+        favoritesRepository.observeCount(),
     ) {
             appPreferences,
             objectDetectionModels,
             localUiState,
             savedSearches,
             autoWallpaperNextRun,
+            lsAutoWallpaperNextRun,
+            lightDarkCount,
+            favoritesCount,
         ->
         val selectedModelId = appPreferences.objectDetectionPreferences.modelId
         val selectedModel = if (selectedModelId == 0L) {
@@ -95,6 +112,7 @@ class SettingsViewModel @Inject constructor(
                 ?: ObjectDetectionModel.DEFAULT
         }
         val allSavedSearches = savedSearches.map { entity -> entity.toSavedSearch() }
+        val autoWallpaperPreferences = appPreferences.autoWallpaperPreferences
         localUiState.merge(
             SettingsUiState(
                 appPreferences = appPreferences,
@@ -105,7 +123,28 @@ class SettingsViewModel @Inject constructor(
                     appPreferences.autoWallpaperPreferences.savedSearchIds.contains(it.id)
                 }.toPersistentList(),
                 autoWallpaperNextRun = autoWallpaperNextRun,
+                lsAutoWallpaperNextRun = lsAutoWallpaperNextRun,
                 localDirectories = getLocalDirs(application, appPreferences).toPersistentList(),
+                hasLightDarkWallpapers = lightDarkCount > 0,
+                hasFavorites = favoritesCount > 0,
+                homeScreenAutoWallpaperSources = AutoWallpaperSources(
+                    lightDarkEnabled = autoWallpaperPreferences.lightDarkEnabled,
+                    useDarkWithExtraDim = autoWallpaperPreferences.useDarkWithExtraDim,
+                    savedSearchEnabled = autoWallpaperPreferences.savedSearchEnabled,
+                    savedSearchIds = autoWallpaperPreferences.savedSearchIds,
+                    favoritesEnabled = autoWallpaperPreferences.favoritesEnabled,
+                    localEnabled = autoWallpaperPreferences.localEnabled,
+                    localDirs = autoWallpaperPreferences.localDirs,
+                ),
+                lockScreenAutoWallpaperSources = AutoWallpaperSources(
+                    lightDarkEnabled = autoWallpaperPreferences.lsLightDarkEnabled,
+                    useDarkWithExtraDim = autoWallpaperPreferences.lsUseDarkWithExtraDim,
+                    savedSearchEnabled = autoWallpaperPreferences.lsSavedSearchEnabled,
+                    savedSearchIds = autoWallpaperPreferences.lsSavedSearchIds,
+                    favoritesEnabled = autoWallpaperPreferences.lsFavoritesEnabled,
+                    localEnabled = autoWallpaperPreferences.lsLocalEnabled,
+                    localDirs = autoWallpaperPreferences.lsLocalDirs,
+                ),
             ),
         )
     }.stateIn(
@@ -129,6 +168,16 @@ class SettingsViewModel @Inject constructor(
     fun updateTagsWriteType(writeType: ExifWriteType) = viewModelScope.launch {
         appPreferencesRepository.updateTagsWriteType(writeType)
     }
+
+    fun updateTelegramPreferences(telegramPreferences: TelegramPreferences) =
+        viewModelScope.launch {
+            appPreferencesRepository.updateTelegramPreferences(telegramPreferences)
+        }
+
+    fun updateHomeRedditSearch(redditSearch: RedditSearch) =
+        viewModelScope.launch {
+            appPreferencesRepository.updateHomeRedditSearch(redditSearch)
+        }
 
     fun updateSubjectDetectionPrefs(objectDetectionPreferences: ObjectDetectionPreferences) =
         viewModelScope.launch {
@@ -372,17 +421,6 @@ class SettingsViewModel @Inject constructor(
         localUiStateFlow.update { it.copy(deleteSavedSearch = partial(savedSearch)) }
     }
 
-    fun updateAutoWallpaperPrefs(autoWallpaperPreferences: AutoWallpaperPreferences) {
-        viewModelScope.launch {
-            updateAutoWallpaperPrefs(
-                context = application,
-                appPreferencesRepository = appPreferencesRepository,
-                prevAppPreferences = uiState.value.appPreferences,
-                newAutoWallpaperPreferences = autoWallpaperPreferences,
-            )
-        }
-    }
-
     fun showAutoWallpaperFrequencyDialog(show: Boolean) = localUiStateFlow.update {
         it.copy(showAutoWallpaperFrequencyDialog = partial(show))
     }
@@ -431,6 +469,16 @@ class SettingsViewModel @Inject constructor(
         it.copy(showThemeOptionsDialog = partial(show))
     }
 
+    fun showAccentColorDialog(show: Boolean) = localUiStateFlow.update {
+        it.copy(showAccentColorDialog = partial(show))
+    }
+
+    fun updateAccentColor(color: Int?) = viewModelScope.launch {
+        appPreferencesRepository.updateLookAndFeelPreferences(
+            uiState.value.appPreferences.lookAndFeelPreferences.copy(accentColor = color),
+        )
+    }
+
     fun updateLookAndFeelPrefs(lookAndFeelPreferences: LookAndFeelPreferences) =
         viewModelScope.launch {
             appPreferencesRepository.updateLookAndFeelPreferences(lookAndFeelPreferences)
@@ -442,9 +490,15 @@ class SettingsViewModel @Inject constructor(
 
     private fun getAutoWallpaperNextRun() = application.workManager.getWorkInfosForUniqueWorkFlow(
         AutoWallpaperWorker.PERIODIC_WORK_NAME,
-    ).map {
-        val info = it.firstOrNull() ?: return@map NextRun.NotScheduled
-        return@map when (info.state) {
+    ).map { getNextRun(it) }
+
+    private fun getLsAutoWallpaperNextRun() = application.workManager.getWorkInfosForUniqueWorkFlow(
+        AutoWallpaperWorker.PERIODIC_LS_WORK_NAME,
+    ).map { getNextRun(it) }
+
+    private fun getNextRun(it: List<WorkInfo>): NextRun {
+        val info = it.firstOrNull() ?: return NextRun.NotScheduled
+        return when (info.state) {
             WorkInfo.State.ENQUEUED -> {
                 NextRun.NextRunTime(Instant.fromEpochMilliseconds(info.nextScheduleTimeMillis))
             }
@@ -475,10 +529,6 @@ class SettingsViewModel @Inject constructor(
                 look = look,
             ),
         )
-    }
-
-    fun showViewedWallpapersLookDialog(show: Boolean) = localUiStateFlow.update {
-        it.copy(showViewedWallpapersLookDialog = partial(show))
     }
 
     fun showClearViewedWallpapersConfirmDialog(show: Boolean) = localUiStateFlow.update {
@@ -525,6 +575,235 @@ class SettingsViewModel @Inject constructor(
             )
         }
     }
+
+    fun updateLayoutPreferences(layoutPreferences: LayoutPreferences) = viewModelScope.launch {
+        appPreferencesRepository.updateLookAndFeelPreferences(
+            uiState.value.appPreferences.lookAndFeelPreferences.copy(
+                layoutPreferences = layoutPreferences,
+            ),
+        )
+    }
+
+    fun updateAutoWallpaperUseSameSources(useSameSources: Boolean) = updateAutoWallpaperPrefs(
+        uiState.value.appPreferences.autoWallpaperPreferences.copy(
+            setDifferentWallpapers = !useSameSources,
+        ),
+    )
+
+    fun updateAutoWallpaperLightDarkEnabled(
+        lightDarkEnabled: Boolean,
+        target: WallpaperTarget,
+    ) {
+        val autoWallpaperPreferences = uiState.value.appPreferences.autoWallpaperPreferences
+        updateAutoWallpaperPrefs(
+            when (target) {
+                WallpaperTarget.HOME -> autoWallpaperPreferences.copy(
+                    lightDarkEnabled = lightDarkEnabled,
+                )
+                WallpaperTarget.LOCKSCREEN -> autoWallpaperPreferences.copy(
+                    lsLightDarkEnabled = lightDarkEnabled,
+                )
+            },
+        )
+    }
+
+    fun updateAutoWallpaperUseDarkWithExtraDim(
+        useDarkWithExtraDim: Boolean,
+        target: WallpaperTarget,
+    ) {
+        val autoWallpaperPreferences = uiState.value.appPreferences.autoWallpaperPreferences
+        updateAutoWallpaperPrefs(
+            when (target) {
+                WallpaperTarget.HOME -> autoWallpaperPreferences.copy(
+                    useDarkWithExtraDim = useDarkWithExtraDim,
+                )
+                WallpaperTarget.LOCKSCREEN -> autoWallpaperPreferences.copy(
+                    lsUseDarkWithExtraDim = useDarkWithExtraDim,
+                )
+            },
+        )
+    }
+
+    fun updateAutoWallpaperSavedSearchEnabled(
+        savedSearchEnabled: Boolean,
+        target: WallpaperTarget,
+    ) {
+        val state = uiState.value
+        val autoWallpaperPreferences = state.appPreferences.autoWallpaperPreferences
+        val savedSearches = state.savedSearches
+        updateAutoWallpaperPrefs(
+            when (target) {
+                WallpaperTarget.HOME -> {
+                    val newSavedSearchIds = autoWallpaperPreferences.savedSearchIds.ifEmpty {
+                        setOf(savedSearches.first().id)
+                    }
+                    autoWallpaperPreferences.copy(
+                        savedSearchEnabled = savedSearchEnabled,
+                        savedSearchIds = newSavedSearchIds,
+                    )
+                }
+                WallpaperTarget.LOCKSCREEN -> {
+                    val newSavedSearchIds = autoWallpaperPreferences.lsSavedSearchIds.ifEmpty {
+                        setOf(savedSearches.first().id)
+                    }
+                    autoWallpaperPreferences.copy(
+                        lsSavedSearchEnabled = savedSearchEnabled,
+                        lsSavedSearchIds = newSavedSearchIds,
+                    )
+                }
+            },
+        )
+    }
+
+    fun updateAutoWallpaperSavedSearchIds(
+        savedSearchIds: Set<Long>,
+        target: WallpaperTarget,
+    ) {
+        val autoWallpaperPreferences = uiState.value.appPreferences.autoWallpaperPreferences
+        updateAutoWallpaperPrefs(
+            when (target) {
+                WallpaperTarget.HOME -> autoWallpaperPreferences.copy(
+                    savedSearchIds = savedSearchIds,
+                )
+                WallpaperTarget.LOCKSCREEN -> autoWallpaperPreferences.copy(
+                    lsSavedSearchIds = savedSearchIds,
+                )
+            },
+        )
+    }
+
+    fun updateAutoWallpaperFavoritesEnabled(
+        favoritesEnabled: Boolean,
+        target: WallpaperTarget,
+    ) {
+        val autoWallpaperPreferences = uiState.value.appPreferences.autoWallpaperPreferences
+        updateAutoWallpaperPrefs(
+            when (target) {
+                WallpaperTarget.HOME -> autoWallpaperPreferences.copy(
+                    favoritesEnabled = favoritesEnabled,
+                )
+                WallpaperTarget.LOCKSCREEN -> autoWallpaperPreferences.copy(
+                    lsFavoritesEnabled = favoritesEnabled,
+                )
+            },
+        )
+    }
+
+    fun updateAutoWallpaperLocalEnabled(
+        localEnabled: Boolean,
+        target: WallpaperTarget,
+    ) {
+        val state = uiState.value
+        val autoWallpaperPreferences = state.appPreferences.autoWallpaperPreferences
+        val localDirs = state.localDirectories
+        updateAutoWallpaperPrefs(
+            when (target) {
+                WallpaperTarget.HOME -> {
+                    val newUris = autoWallpaperPreferences.localDirs.ifEmpty {
+                        setOf(localDirs.first().uri)
+                    }
+                    autoWallpaperPreferences.copy(
+                        localEnabled = localEnabled,
+                        localDirs = newUris,
+                    )
+                }
+                WallpaperTarget.LOCKSCREEN -> {
+                    val newUris = autoWallpaperPreferences.lsLocalDirs.ifEmpty {
+                        setOf(localDirs.first().uri)
+                    }
+                    autoWallpaperPreferences.copy(
+                        lsLocalEnabled = localEnabled,
+                        lsLocalDirs = newUris,
+                    )
+                }
+            },
+        )
+    }
+
+    fun updateAutoWallpaperSelectedLocalDirs(
+        localDirs: Set<Uri>,
+        target: WallpaperTarget,
+    ) {
+        val autoWallpaperPreferences = uiState.value.appPreferences.autoWallpaperPreferences
+        updateAutoWallpaperPrefs(
+            when (target) {
+                WallpaperTarget.HOME -> autoWallpaperPreferences.copy(
+                    localDirs = localDirs,
+                )
+                WallpaperTarget.LOCKSCREEN -> autoWallpaperPreferences.copy(
+                    lsLocalDirs = localDirs,
+                )
+            },
+        )
+    }
+
+    fun updateAutoWallpaperTargets(targets: Set<WallpaperTarget>) {
+        val autoWallpaperPreferences = uiState.value.appPreferences.autoWallpaperPreferences
+        updateAutoWallpaperPrefs(
+            autoWallpaperPreferences.copy(
+                targets = targets,
+            ),
+        )
+    }
+
+    fun updateAutoWallpaperFreq(
+        useSameFreq: Boolean,
+        frequency: DateTimePeriod,
+        lsFrequency: DateTimePeriod,
+    ) {
+        val autoWallpaperPreferences = uiState.value.appPreferences.autoWallpaperPreferences
+        updateAutoWallpaperPrefs(
+            autoWallpaperPreferences.copy(
+                useSameFreq = useSameFreq,
+                frequency = frequency,
+                lsFrequency = lsFrequency,
+            ),
+        )
+    }
+
+    fun updateAutoWallpaperConstraints(constraints: Constraints) {
+        val autoWallpaperPreferences = uiState.value.appPreferences.autoWallpaperPreferences
+        updateAutoWallpaperPrefs(
+            autoWallpaperPreferences.copy(
+                constraints = constraints,
+            ),
+        )
+    }
+
+    fun updateAutoWallpaperEnabled(
+        enabled: Boolean,
+    ) = viewModelScope.launch {
+        val autoWallpaperPreferences = uiState.value.appPreferences.autoWallpaperPreferences
+        updateAutoWallpaperPrefs(
+            context = application,
+            appPreferencesRepository = appPreferencesRepository,
+            prevAppPreferences = uiState.value.appPreferences,
+            newAutoWallpaperPreferences = autoWallpaperPreferences.copy(
+                enabled = enabled,
+            ),
+        )
+    }
+
+    internal fun updateAutoWallpaperPrefs(
+        autoWallpaperPreferences: AutoWallpaperPreferences,
+    ) = viewModelScope.launch {
+        updateAutoWallpaperPrefs(
+            context = application,
+            appPreferencesRepository = appPreferencesRepository,
+            prevAppPreferences = uiState.value.appPreferences,
+            newAutoWallpaperPreferences = autoWallpaperPreferences.copy(
+                enabled = autoWallpaperPreferences.anySourceEnabled,
+            ),
+        )
+    }
+
+    fun updateAcraEnabled(enabled: Boolean) = viewModelScope.launch {
+        appPreferencesRepository.updateAcraEnabled(enabled)
+        // need to restart to init acra
+        localUiStateFlow.update {
+            it.copy(showRestartDialog = partial(enabled))
+        }
+    }
 }
 
 @Stable
@@ -549,15 +828,21 @@ data class SettingsUiState(
     val showPermissionRationaleDialog: Boolean = false,
     val tempAutoWallpaperPreferences: AutoWallpaperPreferences? = null,
     val autoWallpaperNextRun: NextRun = NextRun.NotScheduled,
+    val lsAutoWallpaperNextRun: NextRun = NextRun.NotScheduled,
     val showAutoWallpaperNextRunInfoDialog: Boolean = false,
     val autoWallpaperStatus: AutoWallpaperWorker.Companion.Status? = null,
     val showThemeOptionsDialog: Boolean = false,
+    val showAccentColorDialog: Boolean = false,
     val showAutoWallpaperSetToDialog: Boolean = false,
     val localDirectories: ImmutableList<LocalDirectory> = persistentListOf(),
     val showTagsWriteTypeDialog: Boolean = false,
-    val showViewedWallpapersLookDialog: Boolean = false,
     val showClearViewedWallpapersConfirmDialog: Boolean = false,
     val showChangeDownloadLocationDialog: Boolean = false,
+    val hasLightDarkWallpapers: Boolean = false,
+    val hasFavorites: Boolean = false,
+    val homeScreenAutoWallpaperSources: AutoWallpaperSources = AutoWallpaperSources(),
+    val lockScreenAutoWallpaperSources: AutoWallpaperSources = AutoWallpaperSources(),
+    val showRestartDialog: Boolean = false,
 )
 
 sealed class NextRun {
@@ -567,3 +852,13 @@ sealed class NextRun {
     @Stable
     data class NextRunTime(val instant: Instant) : NextRun()
 }
+
+data class AutoWallpaperSources(
+    val savedSearchEnabled: Boolean = false,
+    val savedSearchIds: Set<Long> = emptySet(),
+    val favoritesEnabled: Boolean = false,
+    val localEnabled: Boolean = false,
+    val localDirs: Set<Uri> = emptySet(),
+    val lightDarkEnabled: Boolean = false,
+    val useDarkWithExtraDim: Boolean = false,
+)

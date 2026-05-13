@@ -21,6 +21,7 @@ import com.ammar.wallflow.data.preferences.ObjectDetectionPreferences
 import com.ammar.wallflow.data.preferences.PreferencesKeys
 import com.ammar.wallflow.data.preferences.Theme
 import com.ammar.wallflow.data.preferences.ViewedWallpapersLook
+import com.ammar.wallflow.data.preferences.TelegramPreferences
 import com.ammar.wallflow.data.preferences.ViewedWallpapersPreferences
 import com.ammar.wallflow.data.preferences.defaultAutoWallpaperConstraints
 import com.ammar.wallflow.data.preferences.defaultAutoWallpaperFreq
@@ -33,6 +34,7 @@ import com.ammar.wallflow.json
 import com.ammar.wallflow.model.OnlineSource
 import com.ammar.wallflow.model.WallpaperTarget
 import com.ammar.wallflow.model.search.RedditSearch
+import com.ammar.wallflow.model.search.RedditSubredditFilter
 import com.ammar.wallflow.model.search.Search
 import com.ammar.wallflow.model.search.WallhavenFilters
 import com.ammar.wallflow.model.search.WallhavenSearch
@@ -42,6 +44,8 @@ import com.ammar.wallflow.model.serializers.constraintTypeMapSerializer
 import com.ammar.wallflow.ui.screens.local.LocalSort
 import com.ammar.wallflow.utils.ExifWriteType
 import com.ammar.wallflow.utils.objectdetection.objectsDetector
+import com.ammar.wallflow.utils.valueOf
+import com.ammar.wallflow.workers.AutoWallpaperWorker.Companion.SourceChoice
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.IOException
 import java.util.UUID
@@ -61,6 +65,7 @@ import kotlinx.serialization.encodeToString
 class AppPreferencesRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val dataStore: DataStore<Preferences>,
+    private val favoritesRepository: FavoritesRepository,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) {
     val appPreferencesFlow: Flow<AppPreferences> = dataStore.data
@@ -72,7 +77,7 @@ class AppPreferencesRepository @Inject constructor(
                 throw exception
             }
         }
-        .map { mapAppPreferences(it) }
+        .map(::mapAppPreferences)
         .flowOn(ioDispatcher)
 
     suspend fun updateWallhavenApiKey(wallhavenApiKey: String) = withContext(ioDispatcher) {
@@ -125,6 +130,22 @@ class AppPreferencesRepository @Inject constructor(
         dataStore.edit {
             it.updateLookAndFeelPreferences(lookAndFeelPreferences)
         }
+    }
+
+    suspend fun updateTelegramPreferences(
+        telegramPreferences: TelegramPreferences,
+    ) = withContext(ioDispatcher) {
+        dataStore.edit { it.updateTelegramPreferences(telegramPreferences) }
+    }
+
+    suspend fun updateRedditSubredditFilter(
+        filter: RedditSubredditFilter,
+    ) = withContext(ioDispatcher) {
+        dataStore.edit { it.updateRedditSubredditFilter(filter) }
+    }
+
+    suspend fun updateCollectionsShowDateSeparators(show: Boolean) = withContext(ioDispatcher) {
+        dataStore.edit { it.set(PreferencesKeys.COLLECTIONS_SHOW_DATE_SEPARATORS, show) }
     }
 
     private fun MutablePreferences.updateWallhavenApikey(wallhavenApiKey: String) {
@@ -196,7 +217,9 @@ class AppPreferencesRepository @Inject constructor(
             lsLocalDirs.mapTo(HashSet()) { it.toString() },
         )
         set(PreferencesKeys.AUTO_WALLPAPER_USE_OBJECT_DETECTION, useObjectDetection)
+        set(PreferencesKeys.AUTO_WALLPAPER_USE_SAME_FREQUENCY, useSameFreq)
         set(PreferencesKeys.AUTO_WALLPAPER_FREQUENCY, frequency.toString())
+        set(PreferencesKeys.AUTO_WALLPAPER_LS_FREQUENCY, lsFrequency.toString())
         set(
             PreferencesKeys.AUTO_WALLPAPER_CONSTRAINTS,
             json.encodeToString(
@@ -217,6 +240,12 @@ class AppPreferencesRepository @Inject constructor(
         set(PreferencesKeys.AUTO_WALLPAPER_LS_LIGHT_DARK_ENABLED, lsLightDarkEnabled)
         set(PreferencesKeys.AUTO_WALLPAPER_USE_DARK_WITH_EXTRA_DIM, useDarkWithExtraDim)
         set(PreferencesKeys.AUTO_WALLPAPER_LS_USE_DARK_WITH_EXTRA_DIM, lsUseDarkWithExtraDim)
+        if (prevHomeSource != null) {
+            set(PreferencesKeys.AUTO_WALLPAPER_PREV_HOME_SOURCE, prevHomeSource.name)
+        }
+        if (prevLockScreenSource != null) {
+            set(PreferencesKeys.AUTO_WALLPAPER_PREV_LS_SOURCE, prevLockScreenSource.name)
+        }
     }
 
     private fun MutablePreferences.updateLookAndFeelPreferences(
@@ -231,12 +260,49 @@ class AppPreferencesRepository @Inject constructor(
             layoutPreferences.gridColMinWidthPct,
         )
         set(PreferencesKeys.LAYOUT_ROUNDED_CORNERS, layoutPreferences.roundedCorners)
+        set(PreferencesKeys.LAYOUT_GRID_ITEM_SPACING_DP, layoutPreferences.gridItemSpacingDp)
+        set(PreferencesKeys.LAYOUT_SHOW_CAROUSEL, layoutPreferences.showCarousel)
+        set(
+            PreferencesKeys.COLLECTIONS_SHOW_DATE_SEPARATORS,
+            layoutPreferences.showCollectionsDateSeparators,
+        )
         set(PreferencesKeys.SHOW_LOCAL_TAB, showLocalTab)
+        if (accentColor != null) {
+            set(PreferencesKeys.ACCENT_COLOR, accentColor.toString())
+        } else {
+            remove(PreferencesKeys.ACCENT_COLOR)
+        }
+    }
+
+    private fun MutablePreferences.updateTelegramPreferences(
+        telegramPreferences: TelegramPreferences,
+    ) = with(telegramPreferences) {
+        set(PreferencesKeys.TELEGRAM_ENABLED, enabled)
+        set(PreferencesKeys.TELEGRAM_BOT_TOKEN, botToken)
+        set(PreferencesKeys.TELEGRAM_CHAT_ID, chatId)
+        set(PreferencesKeys.TELEGRAM_MESSAGE_THREAD_ID, messageThreadId)
+        set(PreferencesKeys.TELEGRAM_POST_AFTER_DOWNLOAD, postAfterDownload)
+        set(PreferencesKeys.TELEGRAM_INCLUDE_FILE_NAME, includeFileName)
+        set(PreferencesKeys.TELEGRAM_INCLUDE_DATE, includeDate)
+        set(PreferencesKeys.TELEGRAM_INCLUDE_TAGS, includeTags)
+        set(PreferencesKeys.TELEGRAM_INCLUDE_SOURCE_URL, includeSourceUrl)
+        set(PreferencesKeys.TELEGRAM_SILENT_NOTIFICATION, silentNotification)
+        set(PreferencesKeys.TELEGRAM_DISABLE_WEB_PAGE_PREVIEW, disableWebPagePreview)
+    }
+
+    private fun MutablePreferences.updateRedditSubredditFilter(filter: RedditSubredditFilter) {
+        set(PreferencesKeys.REDDIT_SUBREDDIT_FILTER, json.encodeToString(filter))
     }
 
     suspend fun updateAutoWallpaperWorkRequestId(id: UUID?) = withContext(ioDispatcher) {
         dataStore.edit {
             it[PreferencesKeys.AUTO_WALLPAPER_WORK_REQUEST_ID] = id?.toString() ?: ""
+        }
+    }
+
+    suspend fun updateAutoWallpaperLsWorkRequestId(id: UUID?) = withContext(ioDispatcher) {
+        dataStore.edit {
+            it[PreferencesKeys.AUTO_WALLPAPER_LS_WORK_REQUEST_ID] = id?.toString() ?: ""
         }
     }
 
@@ -317,7 +383,17 @@ class AppPreferencesRepository @Inject constructor(
         }
     }
 
-    private fun mapAppPreferences(preferences: Preferences): AppPreferences {
+    suspend fun updateAcraEnabled(enable: Boolean) = withContext(ioDispatcher) {
+        dataStore.edit {
+            it.updateAcraEnabled(enable)
+        }
+    }
+
+    private fun MutablePreferences.updateAcraEnabled(enable: Boolean) {
+        set(PreferencesKeys.ENABLE_ACRA, enable)
+    }
+
+    private suspend fun mapAppPreferences(preferences: Preferences): AppPreferences {
         val homeRedditSearch = getHomeRedditSearch(preferences)
         return AppPreferences(
             version = preferences[PreferencesKeys.VERSION] ?: AppPreferences.CURRENT_VERSION,
@@ -339,7 +415,33 @@ class AppPreferencesRepository @Inject constructor(
             mainWallhavenSearch = getMainWallhavenSearch(preferences),
             mainRedditSearch = getMainRedditSearch(preferences),
             viewedWallpapersPreferences = getViewedWallpapersPreferences(preferences),
+            acraEnabled = preferences[PreferencesKeys.ENABLE_ACRA] ?: true,
+            telegramPreferences = getTelegramPreferences(preferences),
+            redditSubredditFilter = getRedditSubredditFilter(preferences),
         )
+    }
+
+    private fun getTelegramPreferences(preferences: Preferences) = TelegramPreferences(
+        enabled = preferences[PreferencesKeys.TELEGRAM_ENABLED] ?: false,
+        botToken = preferences[PreferencesKeys.TELEGRAM_BOT_TOKEN] ?: "",
+        chatId = preferences[PreferencesKeys.TELEGRAM_CHAT_ID] ?: "",
+        messageThreadId = preferences[PreferencesKeys.TELEGRAM_MESSAGE_THREAD_ID] ?: "",
+        postAfterDownload = preferences[PreferencesKeys.TELEGRAM_POST_AFTER_DOWNLOAD] ?: false,
+        includeFileName = preferences[PreferencesKeys.TELEGRAM_INCLUDE_FILE_NAME] ?: true,
+        includeDate = preferences[PreferencesKeys.TELEGRAM_INCLUDE_DATE] ?: true,
+        includeTags = preferences[PreferencesKeys.TELEGRAM_INCLUDE_TAGS] ?: true,
+        includeSourceUrl = preferences[PreferencesKeys.TELEGRAM_INCLUDE_SOURCE_URL] ?: true,
+        silentNotification = preferences[PreferencesKeys.TELEGRAM_SILENT_NOTIFICATION] ?: false,
+        disableWebPagePreview = preferences[PreferencesKeys.TELEGRAM_DISABLE_WEB_PAGE_PREVIEW] ?: false,
+    )
+
+    private fun getRedditSubredditFilter(preferences: Preferences): RedditSubredditFilter {
+        val str = preferences[PreferencesKeys.REDDIT_SUBREDDIT_FILTER] ?: return RedditSubredditFilter()
+        return try {
+            json.decodeFromString(str)
+        } catch (e: Exception) {
+            RedditSubredditFilter()
+        }
     }
 
     private fun getViewedWallpapersPreferences(preferences: Preferences) =
@@ -416,6 +518,7 @@ class AppPreferencesRepository @Inject constructor(
         },
         layoutPreferences = getLayoutPreferences(preferences),
         showLocalTab = preferences[PreferencesKeys.SHOW_LOCAL_TAB] ?: true,
+        accentColor = preferences[PreferencesKeys.ACCENT_COLOR]?.toIntOrNull(),
     )
 
     private fun getLayoutPreferences(preferences: Preferences) = LayoutPreferences(
@@ -435,9 +538,15 @@ class AppPreferencesRepository @Inject constructor(
         gridColMinWidthPct = preferences[PreferencesKeys.LAYOUT_GRID_COL_MIN_WIDTH_PCT]
             ?: 40,
         roundedCorners = preferences[PreferencesKeys.LAYOUT_ROUNDED_CORNERS] ?: true,
+        gridItemSpacingDp = preferences[PreferencesKeys.LAYOUT_GRID_ITEM_SPACING_DP] ?: 8,
+        showCarousel = preferences[PreferencesKeys.LAYOUT_SHOW_CAROUSEL] ?: true,
+        showCollectionsDateSeparators =
+            preferences[PreferencesKeys.COLLECTIONS_SHOW_DATE_SEPARATORS] ?: false,
     )
 
-    private fun getAutoWallpaperPreferences(preferences: Preferences) = with(preferences) {
+    private suspend fun getAutoWallpaperPreferences(
+        preferences: Preferences,
+    ) = with(preferences) {
         val savedSearchIdStrings = get(PreferencesKeys.AUTO_WALLPAPER_SAVED_SEARCH_ID)
             ?: emptySet()
         val savedSearchIds = savedSearchIdStrings
@@ -456,31 +565,25 @@ class AppPreferencesRepository @Inject constructor(
             get(PreferencesKeys.AUTO_WALLPAPER_LS_SAVED_SEARCH_ENABLED)
                 ?: savedSearchEnabled
             ) && lsSavedSearchIds.isNotEmpty()
-
-        val favoritesEnabled = get(PreferencesKeys.AUTO_WALLPAPER_FAVORITES_ENABLED) ?: false
-        val lsFavoritesEnabled = get(PreferencesKeys.AUTO_WALLPAPER_LS_FAVORITES_ENABLED)
-            ?: favoritesEnabled
+        val hasFavorites = favoritesRepository.getCount() > 0
+        val favoritesEnabled = hasFavorites &&
+            get(PreferencesKeys.AUTO_WALLPAPER_FAVORITES_ENABLED) ?: false
+        val lsFavoritesEnabled = hasFavorites &&
+            get(PreferencesKeys.AUTO_WALLPAPER_LS_FAVORITES_ENABLED) ?: favoritesEnabled
 
         val localDirStrings = get(PreferencesKeys.AUTO_WALLPAPER_LOCAL_DIRS)
+        val accessibleFolderUris = context.accessibleFolders.mapTo(HashSet()) { it.uri }
         val localDirs = localDirStrings
             ?.mapNotNullTo(HashSet()) {
-                try {
-                    Uri.parse(it)
-                } catch (exception: Exception) {
-                    null
-                }
-            } ?: context.accessibleFolders.mapTo(HashSet()) { it.uri }
+                getUriIfAccessible(it, accessibleFolderUris)
+            } ?: accessibleFolderUris
         val localEnabled = (get(PreferencesKeys.AUTO_WALLPAPER_LOCAL_ENABLED) ?: false) &&
             localDirs.isNotEmpty()
 
         val lsLocalDirStrings = get(PreferencesKeys.AUTO_WALLPAPER_LS_LOCAL_DIRS)
             ?: localDirs.map { it.toString() }
         val lsLocalDirs = lsLocalDirStrings.mapNotNullTo(HashSet()) {
-            try {
-                Uri.parse(it)
-            } catch (exception: Exception) {
-                null
-            }
+            getUriIfAccessible(it, accessibleFolderUris)
         }
         val lsLocalEnabled = (
             get(PreferencesKeys.AUTO_WALLPAPER_LS_LOCAL_ENABLED)
@@ -528,10 +631,15 @@ class AppPreferencesRepository @Inject constructor(
             lsLocalDirs = lsLocalDirs,
             useObjectDetection = get(PreferencesKeys.AUTO_WALLPAPER_USE_OBJECT_DETECTION)
                 ?: true,
+            useSameFreq = get(PreferencesKeys.AUTO_WALLPAPER_USE_SAME_FREQUENCY) ?: true,
             frequency = parseFrequency(get(PreferencesKeys.AUTO_WALLPAPER_FREQUENCY)),
+            lsFrequency = parseFrequency(get(PreferencesKeys.AUTO_WALLPAPER_LS_FREQUENCY)),
             constraints = parseConstraints(get(PreferencesKeys.AUTO_WALLPAPER_CONSTRAINTS)),
             workRequestId = parseWorkRequestId(
                 get(PreferencesKeys.AUTO_WALLPAPER_WORK_REQUEST_ID),
+            ),
+            lsWorkRequestId = parseWorkRequestId(
+                get(PreferencesKeys.AUTO_WALLPAPER_LS_WORK_REQUEST_ID),
             ),
             showNotification = get(PreferencesKeys.AUTO_WALLPAPER_SHOW_NOTIFICATION) ?: false,
             targets = get(PreferencesKeys.AUTO_WALLPAPER_TARGETS)?.map {
@@ -554,7 +662,27 @@ class AppPreferencesRepository @Inject constructor(
             useDarkWithExtraDim = useDarkWithExtraDim,
             lsUseDarkWithExtraDim = lsUseDarkWithExtraDim,
             backoffUpdated = get(PreferencesKeys.AUTO_WALLPAPER_BACKOFF_UPDATED) ?: false,
+            prevHomeSource = valueOf<SourceChoice>(
+                get(PreferencesKeys.AUTO_WALLPAPER_PREV_HOME_SOURCE),
+            ),
+            prevLockScreenSource = valueOf<SourceChoice>(
+                get(PreferencesKeys.AUTO_WALLPAPER_PREV_LS_SOURCE),
+            ),
         )
+    }
+
+    private fun getUriIfAccessible(
+        uriString: String,
+        accessibleFolderUris: Set<Uri>,
+    ) = try {
+        val uri = Uri.parse(uriString)
+        if (uri in accessibleFolderUris) {
+            uri
+        } else {
+            null
+        }
+    } catch (exception: Exception) {
+        null
     }
 
     private fun getObjectDetectionPreferences(preferences: Preferences) = with(preferences) {
@@ -642,9 +770,13 @@ class AppPreferencesRepository @Inject constructor(
 
     suspend fun getWallHavenApiKey() = getWallhavenApiKey(dataStore.data.first())
 
-    suspend fun getAutoWallHavenWorkRequestId() = getAutoWallpaperPreferences(
+    suspend fun getAutoWallpaperWorkRequestId() = getAutoWallpaperPreferences(
         dataStore.data.first(),
     ).workRequestId
+
+    suspend fun getAutoWallpaperLsWorkRequestId() = getAutoWallpaperPreferences(
+        dataStore.data.first(),
+    ).lsWorkRequestId
 
     suspend fun getAutoWallBackoffUpdated() = getAutoWallpaperPreferences(
         dataStore.data.first(),
@@ -678,6 +810,11 @@ class AppPreferencesRepository @Inject constructor(
                     updateMainSearch(appPreferences.mainRedditSearch)
                 }
                 updateViewedWallpapersPreferences(appPreferences.viewedWallpapersPreferences)
+                updateAcraEnabled(appPreferences.acraEnabled)
+                updateTelegramPreferences(appPreferences.telegramPreferences)
+                if (appPreferences.downloadLocation != null) {
+                    set(PreferencesKeys.DOWNLOAD_LOCATION, appPreferences.downloadLocation.toString())
+                }
             }
         }
     }

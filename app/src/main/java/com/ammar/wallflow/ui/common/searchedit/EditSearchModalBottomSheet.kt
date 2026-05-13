@@ -7,9 +7,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.SheetState
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -21,8 +18,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.ammar.wallflow.extensions.toDp
 import com.ammar.wallflow.model.search.RedditSearch
+import com.ammar.wallflow.model.search.RedditSubredditFilter
 import com.ammar.wallflow.model.search.Search
 import com.ammar.wallflow.model.search.WallhavenSearch
+import com.ammar.wallflow.ui.common.AdaptiveBottomSheet
+import com.ammar.wallflow.ui.common.AdaptiveBottomSheetState
+import com.ammar.wallflow.ui.common.rememberAdaptiveBottomSheetState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -31,12 +32,14 @@ import kotlinx.coroutines.launch
 fun EditSearchModalBottomSheet(
     modifier: Modifier = Modifier,
     contentModifier: Modifier = Modifier,
-    state: SheetState = rememberModalBottomSheetState(),
+    state: AdaptiveBottomSheetState = rememberAdaptiveBottomSheetState(),
     search: Search = WallhavenSearch(),
     header: @Composable (ColumnScope.() -> Unit)? = null,
     showNSFW: Boolean = false,
     showQueryField: Boolean = true,
+    redditSubredditFilter: RedditSubredditFilter = RedditSubredditFilter(),
     onChange: (Search) -> Unit = {},
+    onRedditFilterChange: (RedditSubredditFilter) -> Unit = {},
     onErrorStateChange: (Boolean) -> Unit = {},
     onDismissRequest: () -> Unit = {},
 ) {
@@ -55,7 +58,7 @@ fun EditSearchModalBottomSheet(
         }
     }
 
-    ModalBottomSheet(
+    AdaptiveBottomSheet(
         modifier = modifier,
         onDismissRequest = onDismissRequest,
         sheetState = state,
@@ -73,7 +76,9 @@ fun EditSearchModalBottomSheet(
             search = search,
             showQueryField = showQueryField,
             showNSFW = showNSFW,
+            redditSubredditFilter = redditSubredditFilter,
             onChange = onChange,
+            onRedditFilterChange = onRedditFilterChange,
             onErrorStateChange = onErrorStateChange,
             onMinResAddCustomResClick = { showMinResAddCustomResDialog = true },
             onResolutionsAddCustomResClick = { showResolutionsAddCustomResDialog = true },
@@ -127,7 +132,9 @@ fun EditSearchContent(
     search: Search = WallhavenSearch(),
     showQueryField: Boolean = true,
     showNSFW: Boolean = false,
+    redditSubredditFilter: RedditSubredditFilter = RedditSubredditFilter(),
     onChange: (Search) -> Unit = {},
+    onRedditFilterChange: (RedditSubredditFilter) -> Unit = {},
     onErrorStateChange: (Boolean) -> Unit = {},
     onMinResAddCustomResClick: () -> Unit = {},
     onResolutionsAddCustomResClick: () -> Unit = {},
@@ -146,7 +153,9 @@ fun EditSearchContent(
             modifier = modifier,
             search = search,
             showQueryField = showQueryField,
+            redditSubredditFilter = redditSubredditFilter,
             onChange = onChange,
+            onFilterChange = onRedditFilterChange,
             onErrorStateChange = onErrorStateChange,
         )
     }

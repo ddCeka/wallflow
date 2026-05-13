@@ -14,6 +14,7 @@ import androidx.work.NetworkType
 import com.ammar.wallflow.model.OnlineSource
 import com.ammar.wallflow.model.WallpaperTarget
 import com.ammar.wallflow.model.search.RedditSearch
+import com.ammar.wallflow.model.search.RedditSubredditFilter
 import com.ammar.wallflow.model.search.WallhavenFilters
 import com.ammar.wallflow.model.search.WallhavenSearch
 import com.ammar.wallflow.model.search.WallhavenSorting
@@ -24,6 +25,7 @@ import com.ammar.wallflow.model.serializers.UUIDSerializer
 import com.ammar.wallflow.model.serializers.UriSerializer
 import com.ammar.wallflow.ui.screens.local.LocalSort
 import com.ammar.wallflow.utils.ExifWriteType
+import com.ammar.wallflow.workers.AutoWallpaperWorker.Companion.SourceChoice
 import java.util.UUID
 import kotlinx.datetime.DateTimePeriod
 import kotlinx.serialization.Serializable
@@ -41,6 +43,7 @@ data class AppPreferences(
     ),
     val homeRedditSearch: RedditSearch? = null,
     val homeSources: Map<OnlineSource, Boolean> = mapOf(OnlineSource.WALLHAVEN to true),
+    val redditSubredditFilter: RedditSubredditFilter = RedditSubredditFilter(),
     val blurSketchy: Boolean = false,
     val blurNsfw: Boolean = false,
     val writeTagsToExif: Boolean = false,
@@ -54,10 +57,29 @@ data class AppPreferences(
     val mainRedditSearch: RedditSearch? = null,
     val viewedWallpapersPreferences: ViewedWallpapersPreferences = ViewedWallpapersPreferences(),
     val downloadLocation: Uri? = null,
+    val acraEnabled: Boolean = true,
+    val telegramPreferences: TelegramPreferences = TelegramPreferences(),
 ) {
     companion object {
         const val CURRENT_VERSION = 2
     }
+}
+
+@Serializable
+data class TelegramPreferences(
+    val enabled: Boolean = false,
+    val botToken: String = "",
+    val chatId: String = "",
+    val messageThreadId: String = "",
+    val postAfterDownload: Boolean = false,
+    val includeFileName: Boolean = true,
+    val includeDate: Boolean = true,
+    val includeTags: Boolean = true,
+    val includeSourceUrl: Boolean = true,
+    val silentNotification: Boolean = false,
+    val disableWebPagePreview: Boolean = false,
+) {
+    val isConfigured: Boolean get() = botToken.isNotBlank() && chatId.isNotBlank()
 }
 
 enum class ObjectDetectionDelegate {
@@ -92,10 +114,13 @@ data class AutoWallpaperPreferences(
     val localDirs: Set<Uri> = emptySet(),
     val lsLocalDirs: Set<Uri> = emptySet(),
     val useObjectDetection: Boolean = true,
+    val useSameFreq: Boolean = true,
     val frequency: DateTimePeriod = defaultAutoWallpaperFreq,
+    val lsFrequency: DateTimePeriod = defaultAutoWallpaperFreq,
     val constraints: Constraints = defaultAutoWallpaperConstraints,
     val showNotification: Boolean = false,
     val workRequestId: UUID? = null,
+    val lsWorkRequestId: UUID? = null,
     val targets: Set<WallpaperTarget> = setOf(WallpaperTarget.HOME, WallpaperTarget.LOCKSCREEN),
     val markFavorite: Boolean = false,
     val download: Boolean = false,
@@ -106,15 +131,17 @@ data class AutoWallpaperPreferences(
     val useDarkWithExtraDim: Boolean = false,
     val lsUseDarkWithExtraDim: Boolean = false,
     val backoffUpdated: Boolean = false,
+    val prevHomeSource: SourceChoice? = null,
+    val prevLockScreenSource: SourceChoice? = null,
 ) {
-    private val anyHomeScreenSourceEnabled = lightDarkEnabled || (
+    val anyHomeScreenSourceEnabled = lightDarkEnabled || (
         savedSearchEnabled &&
             savedSearchIds.isNotEmpty() &&
             savedSearchIds.all { it > 0 }
         ) ||
         favoritesEnabled ||
         localEnabled
-    private val anyLockScreenSourceEnabled = lsLightDarkEnabled || (
+    val anyLockScreenSourceEnabled = lsLightDarkEnabled || (
         lsSavedSearchEnabled &&
             lsSavedSearchIds.isNotEmpty() &&
             lsSavedSearchIds.all { it > 0 }
@@ -135,6 +162,7 @@ data class LookAndFeelPreferences(
     val theme: Theme = Theme.SYSTEM,
     val layoutPreferences: LayoutPreferences = LayoutPreferences(),
     val showLocalTab: Boolean = true,
+    val accentColor: Int? = null,
 )
 
 @Serializable
@@ -166,6 +194,8 @@ const val MIN_GRID_COLS = 1L
 const val MAX_GRID_COLS = 5L
 const val MIN_GRID_COL_WIDTH_PCT = 10L
 const val MAX_GRID_COL_WIDTH_PCT = 50L
+const val MIN_GRID_ITEM_SPACING_DP = 0L
+const val MAX_GRID_ITEM_SPACING_DP = 16L
 
 @Serializable
 data class LayoutPreferences(
@@ -174,6 +204,9 @@ data class LayoutPreferences(
     @IntRange(MIN_GRID_COLS, MAX_GRID_COLS) val gridColCount: Int = 2,
     @IntRange(MIN_GRID_COL_WIDTH_PCT, MAX_GRID_COL_WIDTH_PCT) val gridColMinWidthPct: Int = 40,
     val roundedCorners: Boolean = true,
+    @IntRange(MIN_GRID_ITEM_SPACING_DP, MAX_GRID_ITEM_SPACING_DP) val gridItemSpacingDp: Int = 8,
+    val showCarousel: Boolean = true,
+    val showCollectionsDateSeparators: Boolean = false,
 )
 
 @Serializable

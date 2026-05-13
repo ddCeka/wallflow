@@ -77,6 +77,7 @@ internal fun LocalScreenContent(
     onFullWallpaperApplyWallpaperClick: () -> Unit = {},
     onFullWallpaperFullScreenClick: () -> Unit = {},
     onAddFolderClick: () -> Unit = {},
+    onFullWallpaperLightDarkTypeFlagsChange: (Int) -> Unit = {},
 ) {
     LocalScreenContent(
         modifier = modifier,
@@ -108,7 +109,7 @@ internal fun LocalScreenContent(
                 downloadStatus = null,
                 loading = fullWallpaperLoading,
                 thumbData = selectedWallpaper?.thumbData,
-                showFullScreenAction = true,
+                isExpanded = true,
                 showInfo = showFullWallpaperInfo,
                 isFavorite = isFullWallpaperFavorite,
                 onWallpaperTransform = onFullWallpaperTransform,
@@ -127,6 +128,7 @@ internal fun LocalScreenContent(
                         onWallpaperFavoriteClick(fullWallpaper)
                     }
                 },
+                onLightDarkTypeFlagsChange = onFullWallpaperLightDarkTypeFlagsChange,
             )
         },
     )

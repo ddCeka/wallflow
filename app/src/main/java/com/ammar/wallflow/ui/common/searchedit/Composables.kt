@@ -43,6 +43,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -131,6 +132,74 @@ internal fun ExcludedTagsFilter(
         onRemoveTag = { onChange(tags - it) },
         tagFromInputString = { it },
     )
+}
+
+@Composable
+internal fun IncludedSubredditsFilter(
+    modifier: Modifier = Modifier,
+    allSubreddits: Set<String> = emptySet(),
+    subreddits: Set<String> = emptySet(),
+    onChange: (subreddits: Set<String>) -> Unit = {},
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = stringResource(R.string.included_subreddits),
+            style = MaterialTheme.typography.labelLarge,
+        )
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            allSubreddits.sorted().forEach { sub ->
+                val selected = sub in subreddits
+                FilterChip(
+                    selected = selected,
+                    onClick = { onChange(if (selected) subreddits - sub else subreddits + sub) },
+                    label = { Text(sub) },
+                    leadingIcon = if (selected) {
+                        {
+                            Icon(
+                                modifier = Modifier.size(16.dp),
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                            )
+                        }
+                    } else null,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun ExcludedSubredditsFilter(
+    modifier: Modifier = Modifier,
+    allSubreddits: Set<String> = emptySet(),
+    subreddits: Set<String> = emptySet(),
+    onChange: (subreddits: Set<String>) -> Unit = {},
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = stringResource(R.string.excluded_subreddits),
+            style = MaterialTheme.typography.labelLarge,
+        )
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            allSubreddits.sorted().forEach { sub ->
+                val selected = sub in subreddits
+                FilterChip(
+                    selected = selected,
+                    onClick = { onChange(if (selected) subreddits - sub else subreddits + sub) },
+                    label = { Text(sub) },
+                    leadingIcon = if (selected) {
+                        {
+                            Icon(
+                                modifier = Modifier.size(16.dp),
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                            )
+                        }
+                    } else null,
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -629,7 +698,9 @@ internal fun RatioFilter(
         TagInputField(
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor(),
+                .menuAnchor(
+                    type = MenuAnchorType.PrimaryNotEditable,
+                ),
             readOnly = true,
             tags = ratios,
             showTagClearAction = false,
@@ -1193,7 +1264,7 @@ fun CustomResolutionDialog(
                             }
                         },
                     keyboardOptions = KeyboardOptions(
-                        autoCorrect = false,
+                        autoCorrectEnabled = false,
                         keyboardType = KeyboardType.Number,
                         imeAction = ImeAction.Next,
                     ),
@@ -1222,7 +1293,7 @@ fun CustomResolutionDialog(
                             }
                         },
                     keyboardOptions = KeyboardOptions(
-                        autoCorrect = false,
+                        autoCorrectEnabled = false,
                         keyboardType = KeyboardType.Number,
                         imeAction = ImeAction.Done,
                     ),

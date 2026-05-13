@@ -56,7 +56,7 @@
     <string name="pending">У чаканні</string>
     <string name="wallpaper">Шпалеры</string>
     <string name="sfw">SFW</string>
-    <string name="app_name">WallFlow</string>
+    <string name="app_name">Wallflow</string>
     <string name="share">Падзяліцца</string>
     <string name="add">Дадаць</string>
     <string name="one_year">1 год</string>
@@ -300,12 +300,43 @@
     <string name="restore">Аднаўленне</string>
     <string name="file_name_cannot_be_empty">Імя файла не можа быць пустым</string>
     <string name="file_name_already_used">Імя файла ўжо выкарыстоўваецца</string>
-    <string name="light_dark">Светлы / Цёмны</string>
+    <string name="light_dark">Светлыя / Цёмныя</string>
     <string name="extra_dim">«Дадатковае зацямненне»</string>
     <string name="help">Даведка</string>
     <string name="collections">Калекцыі</string>
     <string name="top_range">Топ</string>
-    <string name="custom">Індывідуальны…</string>
+    <string name="custom">Карыстальніцкае…</string>
     <string name="staggered">Мазаіка</string>
     <string name="mark_light_dark">Пазначыць як Светлы або Цёмны</string>
+    <string name="no_favorites">Няма шпалер, пазначаных як абраныя</string>
+    <string name="no_light_dark">Няма шпалер, пазначаных як светлыя або цёмныя</string>
+    <string name="use_same_sources_homescreen_lockscreen">Выкарыстоўваць адну і тую ж крыніцу для галоўнага экрана і экрана блакавання</string>
+    <string name="use_light_dark_wallpapers">Выкарыстоўваць Светлыя / Цёмныя шпалеры</string>
+    <string name="use_dark_with_extra_dim_desc">Дазволіць звычайныя цёмныя шпалеры, калі актывавана \"Дадатковае зацямненне\"</string>
+    <string name="use_dark_with_extra_dim">Выкарыстоўваць цёмныя шпалеры пры \"Дадатковым зацямненні\"</string>
+    <string name="use_saved_searches">Выкарыстоўваць захаваныя пошукі</string>
+    <string name="choose_saved_searches">Выберыце захаваныя пошукі</string>
+    <string name="use_favorites">Выкарыстоўваць абранае</string>
+    <string name="use_local_dirs">Выкарыстоўваць лакальныя каталогі</string>
+    <string name="choose_local_dirs">Выберыце лакальныя каталогі</string>
+    <string name="light_dark_enabled">Светлыя / Цёмныя шпалеры ўключаны</string>
+    <string name="wallpaper_not_changed">Шпалеры не мяняліся</string>
+    <string name="wallpaper_not_changed_with_reason">Шпалеры не мяняліся: %s</string>
+    <string name="no_wallpaper_found">Шпалеры не знойдзены</string>
+    <string name="url">URL</string>
+    <string name="file_name">Імя файла</string>
+    <string name="file_name_invalid">Няправільнае імя файла</string>
+    <string name="no_light_dark_found">Светлыя/Цёмныя шпалеры не знойдзены</string>
+    <string name="download_location">Месца загрузкі</string>
+    <string name="app_prefs_null">Налады праграмы не знойдзены</string>
+    <string name="auto_wallpaper_disabled">Змена шпалер адключана</string>
+    <string name="auto_wallpaper_cancelled">Змена шпалер адменена</string>
+    <string name="light_dark_info">Прызначэнне шпалер як светлых ці цёмных дазволіць службе змены шпалер ўсталёўваць светлыя ці цёмныя шпалеры ў залежнасці ад тэмы сістэмы.
+\nПасля прызначэння ўключыце \"Выкарыстоўваць Светлыя / Цёмныя шпалеры\" ў наладах крыніц для змены шпалер.</string>
+    <plurals name="every_x_hrs">
+        <item quantity="one">Кожная %d гадзіна</item>
+        <item quantity="few">Кожныя %d гадзіны</item>
+        <item quantity="many">Кожныя %d гадзін</item>
+        <item quantity="other">Кожныя %d гадзін</item>
+    </plurals>
 </resources>

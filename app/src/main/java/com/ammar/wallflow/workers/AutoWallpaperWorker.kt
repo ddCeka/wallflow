@@ -83,9 +83,11 @@ import com.ammar.wallflow.utils.NotificationIds.AUTO_WALLPAPER_LOCK_SUCCESS_NOTI
 import com.ammar.wallflow.utils.NotificationIds.AUTO_WALLPAPER_NOTIFICATION_ID
 import com.ammar.wallflow.utils.NotificationIds.AUTO_WALLPAPER_SUCCESS_NOTIFICATION_ID
 import com.ammar.wallflow.utils.decodeSampledBitmapFromUri
+import com.ammar.wallflow.utils.getNextSourceChoice
 import com.ammar.wallflow.utils.getPublicDownloadsDir
 import com.ammar.wallflow.utils.objectdetection.detectObjects
 import com.ammar.wallflow.utils.objectdetection.objectsDetector
+import com.ammar.wallflow.utils.valueOf
 import com.ammar.wallflow.utils.writeTagsToFile
 import com.lazygeniouz.dfc.file.DocumentFileCompat
 import dagger.assisted.Assisted
@@ -119,6 +121,7 @@ class AutoWallpaperWorker @AssistedInject constructor(
 ) {
     private lateinit var appPreferences: AppPreferences
     private lateinit var autoWallpaperPreferences: AutoWallpaperPreferences
+    private lateinit var currentTargets: Set<WallpaperTarget>
     private val notificationBuilder by lazy {
         NotificationCompat.Builder(context, NotificationChannels.AUTO_WALLPAPER_CHANNEL_ID).apply {
             setContentTitle(context.getString(R.string.auto_wallpaper))
@@ -131,6 +134,8 @@ class AutoWallpaperWorker @AssistedInject constructor(
     }
     private var prevPageNum: String? = null
     private var cachedWallhavenWallpapers = mutableListOf<Wallpaper>()
+    private var badWallpapers = mutableListOf<Wallpaper>()
+    private var badSourceChoices = mutableListOf<SourceChoice>()
     private val sourceChoices: Set<SourceChoice>
         get() = mutableSetOf<SourceChoice>().apply {
             if (autoWallpaperPreferences.lightDarkEnabled) {
@@ -176,6 +181,7 @@ class AutoWallpaperWorker @AssistedInject constructor(
     )
 
     override suspend fun doWork(): Result {
+        Log.d(TAG, "doWork: AutoWallpaper work started")
         appPreferences = appPreferencesRepository.appPreferencesFlow.firstOrNull()
             ?: return Result.failure(
                 workDataOf(
@@ -198,14 +204,48 @@ class AutoWallpaperWorker @AssistedInject constructor(
 
     private suspend fun doWorkActual(): Result {
         val forced = inputData.getBoolean(INPUT_FORCE, false)
+        val targetStrArray = inputData.getStringArray(INPUT_TARGETS)
+        currentTargets = targetStrArray
+            ?.mapNotNull { valueOf<WallpaperTarget>(it) }
+            ?.toSet()
+            ?: WallpaperTarget.ALL
+        if (currentTargets.isEmpty()) {
+            currentTargets = WallpaperTarget.ALL
+        }
+        Log.d(TAG, "doWorkActual: enabled: ${autoWallpaperPreferences.enabled}")
         if (!autoWallpaperPreferences.enabled && !forced) {
+            Log.d(TAG, "doWork: AutoWallpaper failed since it is disabled")
+            // worker should not be running, stop it
+            stop(
+                context = context,
+                appPreferencesRepository = appPreferencesRepository,
+            )
             return Result.failure(
                 workDataOf(
                     FAILURE_REASON to FailureReason.DISABLED.name,
                 ),
             )
         }
-        if (!autoWallpaperPreferences.anySourceEnabled) {
+        // check if current targets are enabled in auto wall prefs
+        val enabledTargets = autoWallpaperPreferences.targets
+        val actualTargets = enabledTargets.intersect(currentTargets)
+        if (actualTargets.isEmpty()) {
+            return Result.failure(
+                workDataOf(
+                    FAILURE_REASON to FailureReason.CURRENT_TARGETS_DISABLED.name,
+                ),
+            )
+        }
+        val sourceDisabled = if (currentTargets.size == 2) {
+            !autoWallpaperPreferences.anySourceEnabled
+        } else {
+            when (currentTargets.first()) {
+                WallpaperTarget.HOME -> !autoWallpaperPreferences.anyHomeScreenSourceEnabled
+                WallpaperTarget.LOCKSCREEN -> !autoWallpaperPreferences.anyLockScreenSourceEnabled
+            }
+        }
+        if (sourceDisabled) {
+            Log.d(TAG, "doWork: AutoWallpaper failed since no source enabled")
             return Result.failure(
                 workDataOf(
                     FAILURE_REASON to FailureReason.NO_SOURCES_ENABLED.name,
@@ -214,61 +254,87 @@ class AutoWallpaperWorker @AssistedInject constructor(
         }
         // check if device is not in its default orientation
         if (!forced && !context.isInDefaultOrientation()) {
+            Log.d(TAG, "doWork: AutoWallpaper failed since not in default orientation")
             Log.i(TAG, "Device is rotated. Auto wallpaper will retry in 15 minutes")
             return Result.retry()
         }
-        try {
-            val targets = autoWallpaperPreferences.targets
-            val setDifferentWallpapers = targets.size == 2 &&
-                autoWallpaperPreferences.setDifferentWallpapers
-            try {
-                val (hWall, lWall) = if (setDifferentWallpapers) {
-                    val (homeWallpaper, homeUri) = setWallpaperForTarget(WallpaperTarget.HOME)
-                    val (lockWallpaper, lockUri) = setWallpaperForTarget(WallpaperTarget.LOCKSCREEN)
-                    if (autoWallpaperPreferences.showNotification) {
-                        showSuccessNotification(
-                            wallpaper = homeWallpaper,
-                            uri = homeUri,
-                            targets = setOf(WallpaperTarget.HOME),
-                        )
-                        showSuccessNotification(
-                            wallpaper = lockWallpaper,
-                            uri = lockUri,
-                            silent = true, // set second notification silent
-                            targets = setOf(WallpaperTarget.LOCKSCREEN),
-                        )
-                    }
-                    homeWallpaper to lockWallpaper
-                } else {
-                    val (nextWallpaper, uri) = setWallpaperForTargets(targets)
-                    if (autoWallpaperPreferences.showNotification) {
-                        showSuccessNotification(
-                            wallpaper = nextWallpaper,
-                            uri = uri,
-                            targets = targets,
-                        )
-                    }
-                    nextWallpaper to nextWallpaper
-                }
-                return Result.success(
-                    workDataOf(
-                        SUCCESS_NEXT_HOME_WALLPAPER_ID to hWall.id,
-                        SUCCESS_NEXT_LOCK_WALLPAPER_ID to lWall.id,
-                    ),
-                )
-            } catch (e: NoWallpaperFoundError) {
-                return Result.failure(
-                    workDataOf(
-                        FAILURE_REASON to FailureReason.NO_WALLPAPER_FOUND.name,
-                    ),
-                )
-            }
+        return try {
+            val (hWall, lWall) = setWallpaper()
+            Result.success(
+                workDataOf(
+                    SUCCESS_NEXT_HOME_WALLPAPER_ID to hWall.id,
+                    SUCCESS_NEXT_LOCK_WALLPAPER_ID to lWall.id,
+                ),
+            )
+        } catch (e: NoWallpaperFoundError) {
+            Log.e(TAG, "doWork: AutoWallpaper failed: no wallpaper found", e)
+            Result.failure(
+                workDataOf(
+                    FAILURE_REASON to FailureReason.NO_WALLPAPER_FOUND.name,
+                ),
+            )
         } catch (e: SavedSearchNotFoundError) {
-            return Result.failure(
+            Log.e(TAG, "doWork: AutoWallpaper failed: no saved search found", e)
+            Result.failure(
                 workDataOf(
                     FAILURE_REASON to FailureReason.SAVED_SEARCH_NOT_SET.name,
                 ),
             )
+        }
+    }
+
+    private suspend fun setWallpaper(): Pair<Wallpaper, Wallpaper> {
+        val enabledTargets = autoWallpaperPreferences.targets
+        val targets = enabledTargets.intersect(currentTargets)
+        val setDifferentWallpapers = enabledTargets.size == 2 &&
+            autoWallpaperPreferences.setDifferentWallpapers
+        return if (setDifferentWallpapers) {
+            val (
+                homeWallpaper,
+                homeUri,
+                homeSourceChoice,
+            ) = setWallpaperForTarget(WallpaperTarget.HOME)
+            val (
+                lockWallpaper,
+                lockUri,
+                lockSourceChoice,
+            ) = setWallpaperForTarget(WallpaperTarget.LOCKSCREEN)
+            if (autoWallpaperPreferences.showNotification) {
+                showSuccessNotification(
+                    wallpaper = homeWallpaper,
+                    uri = homeUri,
+                    targets = setOf(WallpaperTarget.HOME),
+                )
+                showSuccessNotification(
+                    wallpaper = lockWallpaper,
+                    uri = lockUri,
+                    silent = true, // set second notification silent
+                    targets = setOf(WallpaperTarget.LOCKSCREEN),
+                )
+            }
+            appPreferencesRepository.updateAutoWallpaperPrefs(
+                autoWallpaperPreferences.copy(
+                    prevHomeSource = homeSourceChoice,
+                    prevLockScreenSource = lockSourceChoice,
+                ),
+            )
+            homeWallpaper to lockWallpaper
+        } else {
+            val (nextWallpaper, uri, sourceChoice) = setWallpaperForTargets(targets)
+            if (autoWallpaperPreferences.showNotification) {
+                showSuccessNotification(
+                    wallpaper = nextWallpaper,
+                    uri = uri,
+                    targets = targets,
+                )
+            }
+            appPreferencesRepository.updateAutoWallpaperPrefs(
+                autoWallpaperPreferences.copy(
+                    prevHomeSource = sourceChoice,
+                    prevLockScreenSource = sourceChoice,
+                ),
+            )
+            nextWallpaper to nextWallpaper
         }
     }
 
@@ -278,9 +344,10 @@ class AutoWallpaperWorker @AssistedInject constructor(
 
     private suspend fun setWallpaperForTargets(
         targets: Set<WallpaperTarget>,
-    ): Pair<Wallpaper, Uri> {
-        val (nextWallpaper, uri) = setNextWallpaper(targets)
-        if (nextWallpaper == null || uri == null) {
+    ): SetWallpaperSuccessResult {
+        val result = setNextWallpaper(targets)
+        val (nextWallpaper, uri, sourceChoice) = result
+        if (nextWallpaper == null || uri == null || sourceChoice == null) {
             throw NoWallpaperFoundError()
         }
         if (autoWallpaperPreferences.markFavorite) {
@@ -294,7 +361,7 @@ class AutoWallpaperWorker @AssistedInject constructor(
                 tagsExifWriteType = appPreferences.tagsExifWriteType,
             )
         }
-        return nextWallpaper to uri
+        return SetWallpaperSuccessResult(nextWallpaper, uri, sourceChoice)
     }
 
     private class SavedSearchNotFoundError : Error()
@@ -302,54 +369,121 @@ class AutoWallpaperWorker @AssistedInject constructor(
 
     private suspend fun setNextWallpaper(
         targets: Set<WallpaperTarget>,
-    ): Pair<Wallpaper?, Uri?> {
+    ): SetWallpaperResult {
         val targetForSource = if (targets.size == 2) {
             // if setting to both targets, use the home screen sources
             WallpaperTarget.HOME
         } else {
             targets.first()
         }
-        val (sourceChoice, nextWallpaper) = getNextWallpaper(targetForSource) ?: return null to null
-        return try {
-            val (applied, file) = setWallpaper(
-                nextWallpaper = nextWallpaper,
-                targets = targets,
-            )
-            if (applied) {
-                autoWallpaperHistoryRepository.addOrUpdateHistory(
-                    AutoWallpaperHistory(
-                        sourceId = nextWallpaper.id,
-                        source = nextWallpaper.source,
-                        sourceChoice = sourceChoice,
-                        setOn = Clock.System.now(),
-                    ),
+        var sourceChoice = getNextSourceChoice(
+            target = targetForSource,
+            sourceChoices = sourceChoices,
+            lsSourceChoices = lsSourceChoices,
+            prevHomeSourceChoice = autoWallpaperPreferences.prevHomeSource,
+            prevLsSourceChoice = autoWallpaperPreferences.prevLockScreenSource,
+        ) ?: return SetWallpaperResult.EMPTY
+
+        var result = SetWallpaperResult.EMPTY
+        var tryNext = true
+        while (tryNext) {
+            val nextWallpaper = getNextWallpaper(
+                sourceChoice = sourceChoice,
+                target = targetForSource,
+            ) ?: return SetWallpaperResult.EMPTY
+            try {
+                result = tryApplyWallpaper(
+                    nextWallpaper = nextWallpaper,
+                    targets = targets,
+                    sourceChoice = sourceChoice,
                 )
-                nextWallpaper to file
-            } else {
-                null to null
+                // successful attempt. Break the loop.
+                tryNext = false
+            } catch (e: BadWallpaperError) {
+                Log.e(TAG, "setNextWallpaper: Bad wallpaper:", e)
+                badWallpapers.add(nextWallpaper)
+                tryNext = hasMoreWallpapers(
+                    sourceChoice = sourceChoice,
+                    target = targetForSource,
+                )
+                if (!tryNext) {
+                    badSourceChoices.add(sourceChoice)
+                    // try the next source choice
+                    sourceChoice = getNextSourceChoice(
+                        target = targetForSource,
+                        sourceChoices = sourceChoices,
+                        lsSourceChoices = lsSourceChoices,
+                        prevHomeSourceChoice = autoWallpaperPreferences.prevHomeSource,
+                        prevLsSourceChoice = autoWallpaperPreferences.prevLockScreenSource,
+                        excluding = badSourceChoices,
+                    ) ?: return SetWallpaperResult.EMPTY
+                    // restart loop with new choice
+                    tryNext = true
+                }
+                Log.d(TAG, "setNextWallpaper: Trying again?: $tryNext")
+            } catch (e: Exception) {
+                Log.e(TAG, "setNextWallpaper: ", e)
+                tryNext = false
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "setNextWallpaper: ", e)
-            return null to null
+        }
+        return result
+    }
+
+    private suspend fun tryApplyWallpaper(
+        nextWallpaper: Wallpaper,
+        targets: Set<WallpaperTarget>,
+        sourceChoice: SourceChoice,
+    ): SetWallpaperResult {
+        Log.d(
+            TAG,
+            "tryApplyWallpaper: Trying to apply: " +
+                "${nextWallpaper.source}: ${nextWallpaper.id}",
+        )
+        val (applied, file) = setWallpaper(
+            nextWallpaper = nextWallpaper,
+            targets = targets,
+        )
+        return if (applied) {
+            autoWallpaperHistoryRepository.addHistory(
+                AutoWallpaperHistory(
+                    sourceId = nextWallpaper.id,
+                    source = nextWallpaper.source,
+                    sourceChoice = sourceChoice,
+                    setOn = Clock.System.now(),
+                    targets = targets,
+                ),
+            )
+            SetWallpaperResult(nextWallpaper, file, sourceChoice)
+        } else {
+            Log.e(TAG, "tryApplyWallpaper: Apply failed")
+            SetWallpaperResult.EMPTY
         }
     }
 
-    private suspend fun getNextWallpaper(
-        target: WallpaperTarget,
-    ): Pair<SourceChoice, Wallpaper>? {
-        val sourceChoice = getNextSourceChoice(target) ?: return null
-        val nextWallpaper: Wallpaper = when (sourceChoice) {
-            SourceChoice.LIGHT_DARK -> getNextLightDarkWallpaper(target)
-            SourceChoice.SAVED_SEARCH -> getNextSavedSearchWallpaper(target)
-            SourceChoice.FAVORITES -> getNextFavoriteWallpaper()
-            SourceChoice.LOCAL -> getNextLocalWallpaper(target)
-        } ?: return null
-        return sourceChoice to nextWallpaper
+    data class SetWallpaperResult(
+        val wallpaper: Wallpaper? = null,
+        val uri: Uri? = null,
+        val sourceChoice: SourceChoice? = null,
+    ) {
+        companion object {
+            val EMPTY = SetWallpaperResult()
+        }
     }
 
-    private fun getNextSourceChoice(target: WallpaperTarget) = when (target) {
-        WallpaperTarget.HOME -> sourceChoices.randomOrNull()
-        WallpaperTarget.LOCKSCREEN -> lsSourceChoices.randomOrNull()
+    data class SetWallpaperSuccessResult(
+        val wallpaper: Wallpaper,
+        val uri: Uri,
+        val sourceChoice: SourceChoice,
+    )
+
+    private suspend fun getNextWallpaper(
+        sourceChoice: SourceChoice,
+        target: WallpaperTarget,
+    ) = when (sourceChoice) {
+        SourceChoice.LIGHT_DARK -> getNextLightDarkWallpaper(target)
+        SourceChoice.SAVED_SEARCH -> getNextSavedSearchWallpaper(target)
+        SourceChoice.FAVORITES -> getNextFavoriteWallpaper()
+        SourceChoice.LOCAL -> getNextLocalWallpaper(target)
     }
 
     private suspend fun setWallpaper(
@@ -358,7 +492,7 @@ class AutoWallpaperWorker @AssistedInject constructor(
     ): Pair<Boolean, Uri?> {
         val uri: Uri = when (nextWallpaper) {
             is DownloadableWallpaper -> {
-                val wallpaperFile = safeDownloadWallpaper(nextWallpaper) ?: return false to null
+                val wallpaperFile = safeDownloadWallpaper(nextWallpaper)
                 try {
                     val notification = notificationBuilder.apply {
                         setContentText(context.getString(R.string.changing_wallpaper))
@@ -439,12 +573,21 @@ class AutoWallpaperWorker @AssistedInject constructor(
         scale to detectionWithBitmaps.firstOrNull()
     }
 
+    private class BadWallpaperError : Error {
+        constructor(cause: Throwable) : super(cause)
+        constructor(cause: String) : super(cause)
+    }
+
     private suspend fun safeDownloadWallpaper(
         wallpaper: DownloadableWallpaper,
-    ): DocumentFileCompat? {
+    ): DocumentFileCompat {
         var downloadTries = 0
         while (true) {
-            val wallpaperFile = downloadWallpaper(wallpaper)
+            val wallpaperFile = try {
+                downloadWallpaper(wallpaper)
+            } catch (e: Exception) {
+                throw BadWallpaperError(e)
+            }
             if (wallpaper !is WallhavenWallpaper) {
                 return wallpaperFile
             }
@@ -463,8 +606,7 @@ class AutoWallpaperWorker @AssistedInject constructor(
             }
             // delete the file and return
             wallpaperFile.delete()
-            // TODO skip this file next time
-            return null
+            throw BadWallpaperError("Bad url: ${wallpaper.url}")
         }
     }
 
@@ -553,7 +695,12 @@ class AutoWallpaperWorker @AssistedInject constructor(
         excludeHistory: Boolean = true,
     ): Wallpaper? {
         val historyIds = if (excludeHistory) {
-            autoWallpaperHistoryRepository.getAll().map { it.sourceId }
+            autoWallpaperHistoryRepository.getAllBySource(
+                when (search) {
+                    is RedditSearch -> Source.REDDIT
+                    is WallhavenSearch -> Source.WALLHAVEN
+                },
+            ).map { it.sourceId }
         } else {
             emptyList()
         }
@@ -577,10 +724,18 @@ class AutoWallpaperWorker @AssistedInject constructor(
 
             // Loop until we find a wallpaper
             val wallpaper = wallpapers.firstOrNull {
-                if (excludeHistory) {
-                    it.id !in historyIds
+                // exclude bad wallpapers always
+                val isBad = badWallpapers.any { b ->
+                    it.id == b.id && it.source == b.source
+                }
+                if (isBad) {
+                    false
                 } else {
-                    true
+                    if (excludeHistory) {
+                        it.id !in historyIds
+                    } else {
+                        true
+                    }
                 }
             }
             if (wallpaper != null) {
@@ -591,39 +746,48 @@ class AutoWallpaperWorker @AssistedInject constructor(
     }
 
     private suspend fun getNextLightDarkWallpaper(target: WallpaperTarget): Wallpaper? {
-        val systemInDarkTheme = context.isSystemInDarkTheme()
-        if (!systemInDarkTheme) {
-            return lightDarkRepository.getRandomByTypeFlags(
-                context = context,
-                typeFlags = setOf(LightDarkType.LIGHT),
-            )
-        }
-        val extraDimActive = context.isExtraDimActive()
-        val useDarkWithExtraDim = when (target) {
-            WallpaperTarget.HOME -> autoWallpaperPreferences.useDarkWithExtraDim
-            WallpaperTarget.LOCKSCREEN -> autoWallpaperPreferences.lsUseDarkWithExtraDim
-        }
-        if (extraDimActive) {
-            val typeFlags = mutableSetOf(
-                LightDarkType.EXTRA_DIM,
-                LightDarkType.DARK or LightDarkType.EXTRA_DIM,
-            )
-            if (useDarkWithExtraDim) {
-                typeFlags += LightDarkType.DARK
-            }
-            return lightDarkRepository.getRandomByTypeFlags(
-                context = context,
-                typeFlags = typeFlags,
-            )
-        }
-        return lightDarkRepository.getRandomByTypeFlags(
+        val typeFlags = getTypeFlagsForTarget(target)
+        // try to get fresh first else one with oldest 'set_on' in history
+        return lightDarkRepository.getFirstFreshByTypeFlags(
             context = context,
-            typeFlags = setOf(LightDarkType.DARK),
+            typeFlags = typeFlags,
+            excluding = badWallpapers,
+        ) ?: lightDarkRepository.getByOldestSetOnAndTypeFlags(
+            context = context,
+            typeFlags = typeFlags,
+            excluding = badWallpapers,
         )
     }
 
-    private suspend fun getNextFavoriteWallpaper() = favoritesRepository.getRandom(
+    private fun getTypeFlagsForTarget(target: WallpaperTarget) =
+        if (!context.isSystemInDarkTheme()) {
+            setOf(LightDarkType.LIGHT)
+        } else {
+            val extraDimActive = context.isExtraDimActive()
+            val useDarkWithExtraDim = when (target) {
+                WallpaperTarget.HOME -> autoWallpaperPreferences.useDarkWithExtraDim
+                WallpaperTarget.LOCKSCREEN -> autoWallpaperPreferences.lsUseDarkWithExtraDim
+            }
+            if (extraDimActive) {
+                mutableSetOf(
+                    LightDarkType.EXTRA_DIM,
+                    LightDarkType.DARK or LightDarkType.EXTRA_DIM,
+                ).also {
+                    if (useDarkWithExtraDim) {
+                        it + LightDarkType.DARK
+                    }
+                }
+            } else {
+                setOf(LightDarkType.DARK)
+            }
+        }
+
+    private suspend fun getNextFavoriteWallpaper() = favoritesRepository.getFirstFresh(
         context = context,
+        excluding = badWallpapers,
+    ) ?: favoritesRepository.getByOldestSetOn(
+        context = context,
+        excluding = badWallpapers,
     )
 
     private suspend fun getNextLocalWallpaper(target: WallpaperTarget): Wallpaper? {
@@ -634,9 +798,13 @@ class AutoWallpaperWorker @AssistedInject constructor(
         if (uris.isEmpty()) {
             return null
         }
-        return localWallpapersRepository.getRandom(
+        return localWallpapersRepository.getFirstFresh(
             context = context,
             uris = uris,
+            excluding = badWallpapers,
+        ) ?: localWallpapersRepository.getByOldestSetOn(
+            context = context,
+            excluding = badWallpapers,
         )
     }
 
@@ -655,6 +823,7 @@ class AutoWallpaperWorker @AssistedInject constructor(
                 } to nextPageNumber?.toString()
             }
             is RedditSearch -> {
+                if (search.filters.subreddits.isEmpty()) return emptyList<Wallpaper>() to null
                 val response = redditNetwork.search(search, page)
                 val after = response.data.after
                 return response.data.children.flatMap {
@@ -773,17 +942,54 @@ class AutoWallpaperWorker @AssistedInject constructor(
         }
     }
 
+    private suspend fun hasMoreWallpapers(
+        sourceChoice: SourceChoice,
+        target: WallpaperTarget,
+    ) = when (sourceChoice) {
+        SourceChoice.LIGHT_DARK -> lightDarkHasMoreWallpapers(target)
+        // saved search manages its own exclude history, see getNextSavedSearchWallpaper
+        SourceChoice.SAVED_SEARCH -> true
+        SourceChoice.FAVORITES -> favoritesHasMoreWallpapers()
+        SourceChoice.LOCAL -> localHasMoreWallpapers(target)
+    }
+
+    private suspend fun lightDarkHasMoreWallpapers(
+        target: WallpaperTarget,
+    ) = lightDarkRepository.getCountForTypeFlagsAndExcludingWallpapers(
+        typeFlags = getTypeFlagsForTarget(target),
+        excluding = badWallpapers,
+    ) > 0
+
+    private suspend fun favoritesHasMoreWallpapers() =
+        favoritesRepository.getCountExcludingWallpapers(
+            excluding = badWallpapers,
+        ) > 0
+
+    private suspend fun localHasMoreWallpapers(
+        target: WallpaperTarget,
+    ) = localWallpapersRepository.getCountExcludingWallpapers(
+        context = context,
+        uris = when (target) {
+            WallpaperTarget.HOME -> autoWallpaperPreferences.localDirs
+            WallpaperTarget.LOCKSCREEN -> autoWallpaperPreferences.lsLocalDirs
+        },
+        excluding = badWallpapers,
+    ) > 0
+
     companion object {
         const val FAILURE_REASON = "failure_reason"
         const val SUCCESS_NEXT_HOME_WALLPAPER_ID = "success_home_wallpaper_id"
         const val SUCCESS_NEXT_LOCK_WALLPAPER_ID = "success_lock_wallpaper_id"
         private const val IMMEDIATE_WORK_NAME = "auto_wallpaper_immediate"
         internal const val PERIODIC_WORK_NAME = "auto_wallpaper_periodic"
+        internal const val PERIODIC_LS_WORK_NAME = "auto_wallpaper_ls_periodic"
         internal const val INPUT_FORCE = "auto_wallpaper_force"
+        internal const val INPUT_TARGETS = "auto_wallpaper_targets"
 
         enum class FailureReason {
             APP_PREFS_NULL,
             DISABLED,
+            CURRENT_TARGETS_DISABLED,
             NO_SOURCES_ENABLED,
             SAVED_SEARCH_NOT_SET,
             NO_WALLPAPER_FOUND,
@@ -792,13 +998,73 @@ class AutoWallpaperWorker @AssistedInject constructor(
 
         suspend fun schedule(
             context: Context,
-            constraints: Constraints,
-            interval: DateTimePeriod,
+            autoWallpaperPreferences: AutoWallpaperPreferences,
             appPreferencesRepository: AppPreferencesRepository,
             enqueuePolicy: ExistingPeriodicWorkPolicy =
                 ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE,
         ) {
-            Log.i(TAG, "Scheduling auto wallpaper worker...")
+            val useSameFreq = autoWallpaperPreferences.useSameFreq
+            if (useSameFreq) {
+                // stop lock screen worker
+                stopLsWorker(context, appPreferencesRepository)
+            }
+            try {
+                if (useSameFreq) {
+                    val requestId = schedule(
+                        context = context,
+                        workName = PERIODIC_WORK_NAME,
+                        constraints = autoWallpaperPreferences.constraints,
+                        interval = autoWallpaperPreferences.frequency,
+                        enqueuePolicy = enqueuePolicy,
+                    )
+                    appPreferencesRepository.updateAutoWallpaperWorkRequestId(requestId)
+                    return
+                }
+                // not using same freq, so schedule different workers for hs and ls
+                val enabledTargets = autoWallpaperPreferences.targets
+                if (WallpaperTarget.HOME in enabledTargets) {
+                    val requestId = schedule(
+                        context = context,
+                        workName = PERIODIC_WORK_NAME,
+                        constraints = autoWallpaperPreferences.constraints,
+                        interval = autoWallpaperPreferences.frequency,
+                        enqueuePolicy = enqueuePolicy,
+                        targets = setOf(WallpaperTarget.HOME),
+                    )
+                    appPreferencesRepository.updateAutoWallpaperWorkRequestId(requestId)
+                } else {
+                    // stop the default worker
+                    stopWorker(context, appPreferencesRepository)
+                }
+                if (WallpaperTarget.LOCKSCREEN in enabledTargets) {
+                    val requestId = schedule(
+                        context = context,
+                        workName = PERIODIC_LS_WORK_NAME,
+                        constraints = autoWallpaperPreferences.constraints,
+                        interval = autoWallpaperPreferences.lsFrequency,
+                        enqueuePolicy = enqueuePolicy,
+                        targets = setOf(WallpaperTarget.LOCKSCREEN),
+                    )
+                    appPreferencesRepository.updateAutoWallpaperLsWorkRequestId(requestId)
+                } else {
+                    // stop the lock screen worker
+                    stopLsWorker(context, appPreferencesRepository)
+                }
+            } finally {
+                appPreferencesRepository.updateAutoWallpaperBackoffUpdated(true)
+            }
+        }
+
+        private fun schedule(
+            context: Context,
+            workName: String,
+            constraints: Constraints,
+            interval: DateTimePeriod,
+            enqueuePolicy: ExistingPeriodicWorkPolicy =
+                ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE,
+            targets: Set<WallpaperTarget> = WallpaperTarget.ALL,
+        ): UUID {
+            Log.i(TAG, "Scheduling auto wallpaper worker for targets: $targets")
             val minutes = interval.hours * 60L + interval.minutes
             val request = PeriodicWorkRequestBuilder<AutoWallpaperWorker>(
                 minutes,
@@ -815,25 +1081,54 @@ class AutoWallpaperWorker @AssistedInject constructor(
                         timeUnit = TimeUnit.MINUTES,
                     )
                 }
+                val wallpaperTargets = targets
+                    .map { it.name }
+                    .toTypedArray()
+                setInputData(workDataOf(INPUT_TARGETS to wallpaperTargets))
             }.build()
             context.workManager.enqueueUniquePeriodicWork(
-                PERIODIC_WORK_NAME,
+                workName,
                 enqueuePolicy,
                 request,
             )
-            appPreferencesRepository.updateAutoWallpaperWorkRequestId(request.id)
-            appPreferencesRepository.updateAutoWallpaperBackoffUpdated(true)
-            Log.i(TAG, "Auto wallpaper worker scheduled!")
+            Log.i(TAG, "Auto wallpaper worker scheduled for targets: $targets")
+            return request.id
         }
 
         suspend fun stop(
             context: Context,
             appPreferencesRepository: AppPreferencesRepository,
         ) {
+            stopWorker(context, appPreferencesRepository)
+            stopLsWorker(context, appPreferencesRepository)
+        }
+
+        private suspend fun stopWorker(
+            context: Context,
+            appPreferencesRepository: AppPreferencesRepository,
+        ) {
+            val scheduled = checkIfScheduled(context, appPreferencesRepository)
+            if (!scheduled) {
+                return
+            }
             Log.i(TAG, "Stopping auto wallpaper worker...")
             context.workManager.cancelUniqueWork(PERIODIC_WORK_NAME)
             appPreferencesRepository.updateAutoWallpaperWorkRequestId(null)
             Log.i(TAG, "Auto wallpaper worker cancelled!")
+        }
+
+        private suspend fun stopLsWorker(
+            context: Context,
+            appPreferencesRepository: AppPreferencesRepository,
+        ) {
+            val scheduled = checkIfLsScheduled(context, appPreferencesRepository)
+            if (!scheduled) {
+                return
+            }
+            Log.i(TAG, "Stopping auto wallpaper lock screen worker...")
+            context.workManager.cancelUniqueWork(PERIODIC_LS_WORK_NAME)
+            appPreferencesRepository.updateAutoWallpaperLsWorkRequestId(null)
+            Log.i(TAG, "Auto wallpaper lock screen worker cancelled!")
         }
 
         suspend fun triggerImmediate(
@@ -862,18 +1157,40 @@ class AutoWallpaperWorker @AssistedInject constructor(
             return request.id
         }
 
-        suspend fun checkIfScheduled(
+        suspend fun checkIfAnyScheduled(
+            context: Context,
+            appPreferencesRepository: AppPreferencesRepository,
+        ) = checkIfScheduled(context, appPreferencesRepository) ||
+            checkIfLsScheduled(context, appPreferencesRepository)
+
+        private suspend fun checkIfScheduled(
             context: Context,
             appPreferencesRepository: AppPreferencesRepository,
         ): Boolean {
+            val requestId = appPreferencesRepository.getAutoWallpaperWorkRequestId()
+                ?: return false
+            return checkIfWorkerScheduled(context, requestId)
+        }
+
+        private suspend fun checkIfLsScheduled(
+            context: Context,
+            appPreferencesRepository: AppPreferencesRepository,
+        ): Boolean {
+            val requestId = appPreferencesRepository.getAutoWallpaperLsWorkRequestId()
+                ?: return false
+            return checkIfWorkerScheduled(context, requestId)
+        }
+
+        private suspend fun checkIfWorkerScheduled(
+            context: Context,
+            requestId: UUID,
+        ): Boolean {
             var running = false
             try {
-                val requestId = appPreferencesRepository.getAutoWallHavenWorkRequestId()
-                    ?: return false
                 val state = context.workManager.getWorkInfoByIdFlow(requestId).firstOrNull()?.state
                 running = state == WorkInfo.State.RUNNING || state == WorkInfo.State.ENQUEUED
             } catch (e: Exception) {
-                Log.e(TAG, "checkScheduled: ", e)
+                Log.e(TAG, "checkScheduled: requestId: $requestId ", e)
             }
             return running
         }

@@ -7,16 +7,16 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.platform.testTag
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
@@ -26,20 +26,19 @@ import com.ammar.wallflow.model.search.WallhavenTagSearchMeta
 import com.ammar.wallflow.model.search.WallhavenUploaderSearchMeta
 import com.ammar.wallflow.model.wallhaven.WallhavenTag
 import com.ammar.wallflow.model.wallhaven.WallhavenUploader
+import com.ammar.wallflow.navigation.AppNavGraphs
 import com.ammar.wallflow.ui.common.LocalSystemController
-import com.ammar.wallflow.ui.common.bottombar.LocalBottomBarController
-import com.ammar.wallflow.ui.common.mainsearch.LocalMainSearchBarController
 import com.ammar.wallflow.ui.common.mainsearch.MainSearchBar
 import com.ammar.wallflow.ui.wallpaperviewer.WallpaperViewer
 import com.ammar.wallflow.ui.wallpaperviewer.WallpaperViewerViewModel
 import com.ammar.wallflow.utils.applyWallpaper
 import com.ammar.wallflow.utils.shareWallpaper
 import com.ammar.wallflow.utils.shareWallpaperUrl
-import com.ramcosta.composedestinations.annotation.DeepLink
 import com.ramcosta.composedestinations.annotation.Destination
+import com.ramcosta.composedestinations.annotation.parameters.DeepLink
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Destination(
+@Destination<AppNavGraphs.RootNavGraph>(
     deepLinks = [
         DeepLink(uriPattern = wallpaperScreenLocalDeepLinkUriPattern),
     ],
@@ -59,8 +58,6 @@ fun WallpaperScreen(
     val sheetColor = MaterialTheme.colorScheme.surfaceColorAtElevation(
         BottomSheetDefaults.Elevation,
     )
-    val searchBarController = LocalMainSearchBarController.current
-    val bottomBarController = LocalBottomBarController.current
     val systemController = LocalSystemController.current
     val context = LocalContext.current
 
@@ -74,22 +71,6 @@ fun WallpaperScreen(
                 it.copy(
                     statusBarColor = Color.Transparent,
                     navigationBarColor = Color.Transparent,
-                    isStatusBarLight = false,
-                )
-            }
-        }
-    }
-
-    DisposableEffect(Unit) {
-        searchBarController.update { it.copy(visible = false) }
-        bottomBarController.update { it.copy(visible = false) }
-        systemController.update { it.copy(applyScaffoldPadding = false) }
-
-        onDispose {
-            systemController.update {
-                it.copy(
-                    applyScaffoldPadding = true,
-                    isStatusBarLight = null,
                 )
             }
         }
@@ -110,7 +91,6 @@ fun WallpaperScreen(
     }
 
     val onTagClick: (wallhavenTag: WallhavenTag) -> Unit = remember(
-        searchBarController.state.value.search,
         uiState.prevMainWallhavenSearch,
     ) {
         fn@{
@@ -125,7 +105,6 @@ fun WallpaperScreen(
     }
 
     val onUploaderClick: (WallhavenUploader) -> Unit = remember(
-        searchBarController.state.value.search,
         uiState.prevMainWallhavenSearch,
     ) {
         fn@{
@@ -135,15 +114,14 @@ fun WallpaperScreen(
                 query = "@${it.username}",
                 meta = WallhavenUploaderSearchMeta(uploader = it),
             )
-            if (searchBarController.state.value.search == search) {
-                return@fn
-            }
             navController.search(search)
         }
     }
 
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .testTag("Wallpaper Screen"),
     ) {
         WallpaperViewer(
             wallpaper = viewerUiState.wallpaper,
@@ -174,15 +152,29 @@ fun WallpaperScreen(
                 shareWallpaper(context, viewerViewModel, wallpaper)
             },
             onApplyWallpaperClick = {
-                val wallpaper = viewerUiState.wallpaper ?: return@WallpaperViewer
+                val wallpaper = viewerUiState.galleryWallpapers?.getOrNull(viewerViewModel.currentGalleryPage)
+                    ?: viewerUiState.wallpaper ?: return@WallpaperViewer
                 applyWallpaper(context, viewerViewModel, wallpaper)
             },
             onTagClick = onTagClick,
             onUploaderClick = onUploaderClick,
             onDownloadPermissionsGranted = viewerViewModel::download,
+            onDownloadAllPermissionsGranted = viewerViewModel::downloadAll,
             onFavoriteToggle = { viewerViewModel.toggleFavorite() },
             onBackClick = { navController.popBackStack() },
             onLightDarkTypeFlagsChange = viewerViewModel::updateLightDarkTypeFlags,
+            showTelegramAction = viewerUiState.telegramEnabled && viewerUiState.telegramIsConfigured,
+            onPostToTelegramClick = {
+                val wallpaper = viewerUiState.galleryWallpapers?.getOrNull(viewerViewModel.currentGalleryPage)
+                    ?: viewerUiState.wallpaper ?: return@WallpaperViewer
+                viewerViewModel.postToTelegram(wallpaper)
+            },
+            galleryWallpapers = viewerUiState.galleryWallpapers,
+            galleryPageIndex = viewerUiState.galleryPageIndex,
+            onGalleryPageChange = viewerViewModel::setGalleryPage,
+            showGalleryFavScopeDialog = viewerUiState.showGalleryFavDialog,
+            onGalleryFavScopeSelected = viewerViewModel::toggleFavoriteScope,
+            onGalleryFavScopeDismiss = viewerViewModel::dismissGalleryFavDialog,
         )
     }
 }

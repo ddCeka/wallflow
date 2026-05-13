@@ -17,6 +17,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.hilt.gradle)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.room)
@@ -38,8 +39,8 @@ android {
         applicationId = "com.ammar.wallflow"
         minSdk = 24
         targetSdk = 35
-        versionCode = 20
-        versionName = "2.4.3"
+        versionCode = 22
+        versionName = "2.6.0"
 
         val abi = getAbi()
         ndk {
@@ -48,11 +49,11 @@ android {
             }
         }
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "com.ammar.wallflow.HiltTestRunner"
 
         ksp {
             arg("room.generateKotlin", "true")
-            arg("compose-destinations.generateNavGraphs", "false")
+            arg("compose-destinations.codeGenPackageName", "com.ammar.wallflow")
         }
     }
 
@@ -87,6 +88,10 @@ android {
                 signingConfig = signingConfigs.getByName("release")
             }
         }
+
+        create("alpha") {
+            initWith(getByName("release"))
+        }
     }
 
     flavorDimensions += "feature"
@@ -105,10 +110,11 @@ android {
         // Configures multiple APKs based on ABI.
         abi {
             // Enables building multiple APKs per ABI.
+            // gradle.startParameter is not configuration-cache compatible; use a project
+            // property instead. CI passes -Pgithub so splits are produced there automatically.
             isEnable = !hasProperty("fdroid")
                 && !hasProperty("noSplits")
-                && gradle.startParameter.taskNames.isNotEmpty()
-                && gradle.startParameter.taskNames.any { it.contains("Release") }
+                && hasProperty("github")
 
             // Resets the list of ABIs that Gradle should create APKs for to none.
             reset()
@@ -145,20 +151,12 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     buildFeatures {
         compose = true
         aidl = false
         buildConfig = true
         renderScript = false
         shaders = false
-    }
-
-    composeOptions {
-        kotlinCompilerExtensionVersion = libs.versions.androidxComposeCompiler.get()
     }
 
     packaging {
@@ -186,7 +184,11 @@ android {
     }
 
     lint {
+        checkReleaseBuilds = false
         warning += "AutoboxingStateCreation"
+        // Disable crashing lifecycle lint check when using Kotlin 2.x
+        // https://issuetracker.google.com/issues/372893057
+        disable += "NullSafeMutableLiveData"
     }
 
     sourceSets {
@@ -195,6 +197,15 @@ android {
 
     androidResources {
         generateLocaleConfig = true
+    }
+}
+
+composeCompiler {
+    if (project.findProperty("composeCompilerReports") == "true") {
+        reportsDestination = layout.buildDirectory.dir("compose_compiler")
+    }
+    if (project.findProperty("composeCompilerMetrics") == "true") {
+        metricsDestination = layout.buildDirectory.dir("compose_compiler")
     }
 }
 
@@ -212,12 +223,12 @@ dependencies {
     coreLibraryDesugaring(libs.android.tools.desugar)
 
     // Core Android dependencies
+    implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.service)
-    implementation(libs.androidx.lifecycle.process)
-    implementation(libs.androidx.activity.compose)
 
     // Hilt Dependency Injection
     implementation(libs.hilt.android)
@@ -232,7 +243,6 @@ dependencies {
 
     // Arch Components
     implementation(libs.androidx.lifecycle.viewmodel.compose)
-    // implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.hilt.navigation.compose)
 
     // Room
@@ -242,11 +252,16 @@ dependencies {
     androidTestImplementation(libs.androidx.room.testing)
 
     // Compose
+    implementation(libs.androidx.compose.adaptive.layout)
+    implementation(libs.androidx.compose.adaptive.navigation)
+    implementation(libs.androidx.compose.animation)
+    implementation(libs.androidx.compose.material.icons.core)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material3.window.size.cls)
+    implementation(libs.material.kolor)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.ui.util)
-    implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.material3.window.size.cls)
     // Tooling
     debugImplementation(libs.androidx.compose.ui.tooling)
     // Compose Runtime tracing
@@ -259,13 +274,17 @@ dependencies {
     implementation(libs.compose.destinations.core)
     ksp(libs.compose.destinations.ksp)
     androidTestImplementation(libs.androidx.navigation.testing)
+    constraints {
+        implementation(libs.androidx.navigation.compose)
+    }
 
     // Retrofit
     implementation(libs.kotlinx.datetime)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
     implementation(libs.retrofit.core)
-    implementation(libs.retrofit.kotlin.serialization)
+    implementation(libs.retrofit.kotlinx.serialization)
 
     // Paging
     implementation(libs.androidx.paging.runtime)
@@ -328,6 +347,11 @@ dependencies {
     implementation(libs.androidx.profileinstaller)
     baselineProfile(project(":benchmarks"))
 
+    // crash reporting
+    implementation(libs.acra.core)
+    implementation(libs.auto.service.annotations)
+    ksp(libs.auto.service.ksp)
+
     // Local tests: jUnit, coroutines, Android runner
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
@@ -338,6 +362,7 @@ dependencies {
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.kotlin.test.junit)
+    androidTestImplementation(libs.kotlinx.coroutines.guava)
     androidTestUtil(libs.androidx.test.services)
 
     // mockk

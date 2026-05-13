@@ -69,10 +69,17 @@ object PreferencesKeys {
     val AUTO_WALLPAPER_USE_OBJECT_DETECTION = booleanPreferencesKey(
         "auto_wallpaper_use_object_detection",
     )
+    val AUTO_WALLPAPER_USE_SAME_FREQUENCY = booleanPreferencesKey(
+        "auto_wallpaper_use_same_frequency",
+    )
     val AUTO_WALLPAPER_FREQUENCY = stringPreferencesKey("auto_wallpaper_frequency")
+    val AUTO_WALLPAPER_LS_FREQUENCY = stringPreferencesKey("auto_wallpaper_ls_frequency")
     val AUTO_WALLPAPER_CONSTRAINTS = stringPreferencesKey("auto_wallpaper_constraints")
     val AUTO_WALLPAPER_SHOW_NOTIFICATION = booleanPreferencesKey("auto_wallpaper_show_notification")
     val AUTO_WALLPAPER_WORK_REQUEST_ID = stringPreferencesKey("auto_wallpaper_work_request_id")
+    val AUTO_WALLPAPER_LS_WORK_REQUEST_ID = stringPreferencesKey(
+        "auto_wallpaper_ls_work_request_id",
+    )
     val AUTO_WALLPAPER_TARGETS = stringSetPreferencesKey("auto_wallpaper_targets")
     val AUTO_WALLPAPER_MARK_FAVORITE = booleanPreferencesKey("auto_wallpaper_mark_favorite")
     val AUTO_WALLPAPER_DOWNLOAD = booleanPreferencesKey("auto_wallpaper_download")
@@ -93,16 +100,35 @@ object PreferencesKeys {
         "auto_wallpaper_ls_use_dark_with_extra_dim",
     )
     val AUTO_WALLPAPER_BACKOFF_UPDATED = booleanPreferencesKey("auto_wallpaper_backoff_updated")
+    val AUTO_WALLPAPER_PREV_HOME_SOURCE = stringPreferencesKey("auto_wallpaper_prev_home_source")
+    val AUTO_WALLPAPER_PREV_LS_SOURCE = stringPreferencesKey("auto_wallpaper_prev_ls_source")
     val THEME = stringPreferencesKey("theme")
     val LAYOUT_GRID_TYPE = stringPreferencesKey("layout_grid_type")
     val LAYOUT_GRID_COL_TYPE = stringPreferencesKey("layout_grid_col_type")
     val LAYOUT_GRID_COL_COUNT = intPreferencesKey("layout_grid_col_count")
     val LAYOUT_GRID_COL_MIN_WIDTH_PCT = intPreferencesKey("layout_grid_col_min_width_pct")
     val LAYOUT_ROUNDED_CORNERS = booleanPreferencesKey("layout_rounded_corners")
+    val LAYOUT_GRID_ITEM_SPACING_DP = intPreferencesKey("layout_grid_item_spacing_dp")
+    val LAYOUT_SHOW_CAROUSEL = booleanPreferencesKey("layout_show_carousel")
+    val COLLECTIONS_SHOW_DATE_SEPARATORS = booleanPreferencesKey("collections_show_date_separators")
     val SHOW_LOCAL_TAB = booleanPreferencesKey("show_local_tab")
+    val ACCENT_COLOR = stringPreferencesKey("accent_color")
     val CHANGE_WALLPAPER_TILE_ADDED = booleanPreferencesKey("change_wallpaper_tile_added")
     val LOCAL_WALLPAPERS_SORT = stringPreferencesKey("local_wallpapers_sort")
     val LOCAL_DIRS = stringSetPreferencesKey("local_dirs")
     val VIEWED_WALLPAPERS_ENABLED = booleanPreferencesKey("viewed_wallpapers_enabled")
     val VIEWED_WALLPAPERS_LOOK = stringPreferencesKey("viewed_wallpapers_look")
+    val ENABLE_ACRA = booleanPreferencesKey("enable_acra")
+    val TELEGRAM_ENABLED = booleanPreferencesKey("telegram_enabled")
+    val TELEGRAM_BOT_TOKEN = stringPreferencesKey("telegram_bot_token")
+    val TELEGRAM_CHAT_ID = stringPreferencesKey("telegram_chat_id")
+    val TELEGRAM_POST_AFTER_DOWNLOAD = booleanPreferencesKey("telegram_post_after_download")
+    val TELEGRAM_INCLUDE_FILE_NAME = booleanPreferencesKey("telegram_include_file_name")
+    val TELEGRAM_INCLUDE_DATE = booleanPreferencesKey("telegram_include_date")
+    val TELEGRAM_INCLUDE_TAGS = booleanPreferencesKey("telegram_include_tags")
+    val TELEGRAM_INCLUDE_SOURCE_URL = booleanPreferencesKey("telegram_include_source_url")
+    val TELEGRAM_SILENT_NOTIFICATION = booleanPreferencesKey("telegram_silent_notification")
+    val TELEGRAM_DISABLE_WEB_PAGE_PREVIEW = booleanPreferencesKey("telegram_disable_web_page_preview")
+    val TELEGRAM_MESSAGE_THREAD_ID = stringPreferencesKey("telegram_message_thread_id")
+    val REDDIT_SUBREDDIT_FILTER = stringPreferencesKey("reddit_subreddit_filter")
 }

@@ -7,14 +7,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -22,8 +27,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -32,6 +39,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -39,61 +47,67 @@ import androidx.navigation.NavController
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.ammar.wallflow.R
+import com.ammar.wallflow.destinations.WallpaperScreenDestination
 import com.ammar.wallflow.extensions.search
+import com.ammar.wallflow.extensions.toPxF
 import com.ammar.wallflow.extensions.toast
 import com.ammar.wallflow.model.OnlineSource
 import com.ammar.wallflow.model.Wallpaper
 import com.ammar.wallflow.model.search.RedditSearch
+import com.ammar.wallflow.model.search.Search
 import com.ammar.wallflow.model.search.SearchSaver
 import com.ammar.wallflow.model.search.WallhavenSearch
 import com.ammar.wallflow.model.search.WallhavenTagSearchMeta
 import com.ammar.wallflow.model.search.WallhavenUploaderSearchMeta
 import com.ammar.wallflow.model.wallhaven.WallhavenTag
 import com.ammar.wallflow.model.wallhaven.WallhavenUploader
+import com.ammar.wallflow.navigation.AppNavGraphs
 import com.ammar.wallflow.ui.common.LocalSystemController
 import com.ammar.wallflow.ui.common.SearchBar
 import com.ammar.wallflow.ui.common.bottomWindowInsets
 import com.ammar.wallflow.ui.common.bottombar.LocalBottomBarController
-import com.ammar.wallflow.ui.common.mainsearch.LocalMainSearchBarController
 import com.ammar.wallflow.ui.common.mainsearch.MainSearchBar
+import com.ammar.wallflow.ui.common.rememberAdaptiveBottomSheetState
 import com.ammar.wallflow.ui.common.searchedit.EditSearchModalBottomSheet
 import com.ammar.wallflow.ui.common.searchedit.SaveAsDialog
 import com.ammar.wallflow.ui.common.searchedit.SavedSearchesDialog
-import com.ammar.wallflow.ui.common.topWindowInsets
-import com.ammar.wallflow.ui.screens.destinations.WallpaperScreenDestination
 import com.ammar.wallflow.ui.screens.home.composables.FiltersBottomSheetHeader
 import com.ammar.wallflow.ui.screens.home.composables.ManageSourcesDialog
 import com.ammar.wallflow.ui.screens.home.composables.RedditInitDialog
 import com.ammar.wallflow.ui.screens.home.composables.header
 import com.ammar.wallflow.ui.screens.home.composables.wallhavenHeader
+import com.ammar.wallflow.ui.screens.main.RootNavControllerWrapper
 import com.ammar.wallflow.ui.wallpaperviewer.WallpaperViewerViewModel
 import com.ammar.wallflow.utils.applyWallpaper
 import com.ammar.wallflow.utils.getStartBottomPadding
 import com.ammar.wallflow.utils.shareWallpaper
 import com.ammar.wallflow.utils.shareWallpaperUrl
 import com.ramcosta.composedestinations.annotation.Destination
-import com.ramcosta.composedestinations.navigation.navigate
+import kotlin.math.roundToInt
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Destination(
-    navArgsDelegate = HomeScreenNavArgs::class,
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@Destination<AppNavGraphs.HomeNavGraph>(
+    start = true,
+    navArgs = HomeScreenNavArgs::class,
 )
 @Composable
 fun HomeScreen(
     navController: NavController,
-    nestedScrollConnectionGetter: () -> NestedScrollConnection,
+    rootNavControllerWrapper: RootNavControllerWrapper,
 ) {
+    val rootNavController = rootNavControllerWrapper.navController
     val viewModel: HomeViewModel = hiltViewModel()
     val viewerViewModel: WallpaperViewerViewModel = hiltViewModel()
+    val searchBarViewModel: SearchBarViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val viewerUiState by viewerViewModel.uiState.collectAsStateWithLifecycle()
+    val searchBarUiState by searchBarViewModel.uiState.collectAsStateWithLifecycle()
     val wallpapers = viewModel.wallpapers.collectAsLazyPagingItems()
     val refreshState = rememberPullToRefreshState()
     val showRefreshingIndicator = wallpapers.loadState.refresh == LoadState.Loading &&
         wallpapers.itemCount > 0
-    val searchBarController = LocalMainSearchBarController.current
     val bottomBarController = LocalBottomBarController.current
     val systemController = LocalSystemController.current
     val density = LocalDensity.current
@@ -108,8 +122,37 @@ fun HomeScreen(
     )
     val systemState by systemController.state
     val clipboardManager = LocalClipboardManager.current
-    var prevLoadState by remember {
-        mutableStateOf(wallpapers.loadState.refresh)
+    val bottomBarState by bottomBarController.state
+
+    val searchBarQuery by remember {
+        derivedStateOf {
+            when (searchBarUiState.search.meta) {
+                is WallhavenTagSearchMeta, is WallhavenUploaderSearchMeta -> {
+                    if (searchBarUiState.active) {
+                        searchBarUiState.search.query
+                    } else {
+                        ""
+                    }
+                }
+                else -> searchBarUiState.search.query
+            }
+        }
+    }
+
+    val searchBarHeightPx = SearchBar.Defaults.height.toPxF()
+    var searchBarOffsetHeightPx by remember { mutableFloatStateOf(0f) }
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset {
+                val delta = available.y
+                val newOffset = searchBarOffsetHeightPx + delta
+                searchBarOffsetHeightPx = newOffset.coerceIn(-searchBarHeightPx, 0f)
+                return Offset.Zero
+            }
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -131,35 +174,8 @@ fun HomeScreen(
                     subreddits = uiState.reddit.subreddits,
                 )
             }
-        searchBarController.update {
-            it.copy(
-                visible = true,
-                search = search,
-                source = uiState.selectedSource,
-            )
-        }
-    }
-
-    LaunchedEffect(refreshState.isRefreshing, wallpapers.loadState.refresh) {
-        try {
-            if (!refreshState.isRefreshing) {
-                return@LaunchedEffect
-            }
-            val loadState = wallpapers.loadState.refresh
-            if (prevLoadState !is LoadState.Loading &&
-                loadState is LoadState.NotLoading
-            ) {
-                wallpapers.refresh()
-                viewModel.refresh()
-                return@LaunchedEffect
-            }
-            if (loadState is LoadState.Loading) {
-                return@LaunchedEffect
-            }
-            refreshState.endRefresh()
-        } finally {
-            prevLoadState = wallpapers.loadState.refresh
-        }
+        searchBarViewModel.setSearch(search)
+        searchBarViewModel.setSource(uiState.selectedSource)
     }
 
     val onWallpaperClick: (wallpaper: Wallpaper) -> Unit = remember(systemState.isExpanded) {
@@ -173,19 +189,19 @@ fun HomeScreen(
                 )
             } else {
                 // navigate to wallpaper screen
-                navController.navigate(
+                rootNavController.navigate(
                     WallpaperScreenDestination(
                         source = it.source,
                         wallpaperId = it.id,
                         thumbData = it.thumbData,
-                    ),
+                    ).route,
                 )
             }
         }
     }
 
     val onTagClick: (wallhavenTag: WallhavenTag) -> Unit = remember(
-        searchBarController.state.value.search,
+        searchBarUiState.search,
         uiState.prevMainWallhavenSearch,
     ) {
         fn@{
@@ -195,7 +211,7 @@ fun HomeScreen(
                 query = "id:${it.id}",
                 meta = WallhavenTagSearchMeta(it),
             )
-            if (searchBarController.state.value.search == search) {
+            if (searchBarUiState.search == search) {
                 return@fn
             }
             navController.search(search)
@@ -203,7 +219,7 @@ fun HomeScreen(
     }
 
     val onUploaderClick: (WallhavenUploader) -> Unit = remember(
-        searchBarController.state.value.search,
+        searchBarUiState.search,
         uiState.prevMainWallhavenSearch,
     ) {
         fn@{
@@ -213,7 +229,7 @@ fun HomeScreen(
                 query = "@${it.username}",
                 meta = WallhavenUploaderSearchMeta(uploader = it),
             )
-            if (searchBarController.state.value.search == search) {
+            if (searchBarUiState.search == search) {
                 return@fn
             }
             navController.search(search)
@@ -225,20 +241,91 @@ fun HomeScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .windowInsetsPadding(topWindowInsets)
-            .nestedScroll(refreshState.nestedScrollConnection),
+            .testTag("Home Screen"),
     ) {
         HomeScreenContent(
             modifier = Modifier.fillMaxSize(),
-            nestedScrollConnectionGetter = nestedScrollConnectionGetter,
+            nestedScrollConnectionGetter = { nestedScrollConnection },
             isExpanded = systemState.isExpanded,
+            isMedium = systemState.isMedium,
             contentPadding = PaddingValues(
-                start = 8.dp,
-                end = 8.dp,
+                start = if (systemState.isExpanded) 0.dp else 8.dp,
+                end = if (systemState.isExpanded) 0.dp else 8.dp,
                 top = SearchBar.Defaults.height,
                 bottom = bottomPadding + 8.dp,
             ),
             wallpapers = wallpapers,
+            searchBar = {
+                HomeSearch(
+                    modifier = Modifier.offset {
+                        IntOffset(x = 0, y = searchBarOffsetHeightPx.roundToInt())
+                    },
+                    active = searchBarUiState.active,
+                    useDocked = systemState.isExpanded || bottomBarState.isRail,
+                    useFullWidth = systemState.isExpanded,
+                    search = searchBarUiState.search,
+                    query = searchBarQuery,
+                    suggestions = searchBarUiState.suggestions,
+                    showQuery = if (uiState.isHome) {
+                        searchBarUiState.active
+                    } else {
+                        true
+                    },
+                    onQueryChange = searchBarViewModel::setQuery,
+                    onBackClick = if (!uiState.isHome) {
+                        { navController.navigateUp() }
+                    } else {
+                        null
+                    },
+                    onSearch = {
+                        doSearch(
+                            mainSearch = uiState.mainSearch,
+                            search = it,
+                            searchBarViewModel = searchBarViewModel,
+                            navController = navController,
+                        )
+                    },
+                    onSearchChange = searchBarViewModel::setSearch,
+                    onSearchDeleteRequest = searchBarViewModel::setSearchToDelete,
+                    onActiveChange = { active ->
+                        searchBarViewModel.setActive(active)
+                        if (systemState.isExpanded || bottomBarState.isRail) {
+                            return@HomeSearch
+                        }
+                        systemController.update {
+                            it.copy(
+                                statusBarColor = if (active) {
+                                    Color.Transparent
+                                } else {
+                                    Color.Unspecified
+                                },
+                            )
+                        }
+                        bottomBarController.update {
+                            it.copy(visible = !active)
+                        }
+                    },
+                    onSaveAsClick = {
+                        val searchBarSearch = searchBarUiState.search
+                        val query = searchBarSearch.query
+                        val updated = when (searchBarSearch) {
+                            is RedditSearch -> searchBarSearch.copy(
+                                query = query,
+                            )
+                            is WallhavenSearch -> searchBarSearch.copy(
+                                query = query,
+                            )
+                        }
+                        viewModel.showSaveSearchAsDialog(updated)
+                    },
+                    onLoadClick = {
+                        viewModel.showSavedSearches(
+                            show = true,
+                            isFromSearchBar = true,
+                        )
+                    },
+                )
+            },
             header = if (uiState.isHome) {
                 {
                     header(
@@ -274,6 +361,17 @@ fun HomeScreen(
             } else {
                 null
             },
+            refreshState = refreshState,
+            refreshIndicator = {
+                PullToRefreshDefaults.LoadingIndicator(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .offset(y = SearchBar.Defaults.height - 8.dp),
+                    state = refreshState,
+                    isRefreshing = showRefreshingIndicator,
+                )
+            },
+            showFAB = !searchBarUiState.active,
             favorites = uiState.favorites,
             viewedList = uiState.viewedList,
             viewedWallpapersLook = uiState.viewedWallpapersLook,
@@ -292,8 +390,38 @@ fun HomeScreen(
             fullWallpaperLightDarkTypeFlags = viewerUiState.lightDarkTypeFlags,
             onWallpaperClick = onWallpaperClick,
             onWallpaperFavoriteClick = viewModel::toggleFavorite,
+            onWallpaperLongClick = viewModel::setQuickActionsWallpaper,
+            quickActionsWallpaper = uiState.quickActionsWallpaper,
+            showTelegram = uiState.telegramIsConfigured,
+            onQuickActionsDismiss = { viewModel.setQuickActionsWallpaper(null) },
+            onQuickActionsFavoriteClick = { wallpaper ->
+                viewModel.toggleFavorite(wallpaper)
+            },
+            onQuickActionsApplyWallpaperClick = { wallpaper ->
+                applyWallpaper(context, viewerViewModel, wallpaper)
+                viewModel.setQuickActionsWallpaper(null)
+            },
+            onQuickActionsDownloadClick = { wallpaper ->
+                viewerViewModel.download(wallpaper)
+                viewModel.setQuickActionsWallpaper(null)
+            },
+            onQuickActionsShareClick = { wallpaper ->
+                shareWallpaperUrl(context, wallpaper)
+                viewModel.setQuickActionsWallpaper(null)
+            },
+            onQuickActionsTelegramClick = { wallpaper ->
+                // Pass wallpaper directly – avoids the race condition where
+                // setWallpaper() triggers an async fetch and postToTelegram()
+                // would read a null wallpaper from uiState.
+                viewerViewModel.postToTelegram(wallpaper)
+                viewModel.setQuickActionsWallpaper(null)
+            },
             onTagClick = onTagClick,
             onFABClick = onFilterFABClick,
+            onRefresh = {
+                wallpapers.refresh()
+                viewModel.refresh()
+            },
             onFullWallpaperTransform = viewerViewModel::onWallpaperTransform,
             onFullWallpaperTap = viewerViewModel::onWallpaperTap,
             onFullWallpaperInfoClick = viewerViewModel::showInfo,
@@ -307,51 +435,42 @@ fun HomeScreen(
                 shareWallpaper(context, viewerViewModel, wallpaper)
             },
             onFullWallpaperApplyWallpaperClick = {
-                val wallpaper = viewerUiState.wallpaper ?: return@HomeScreenContent
+                val wallpaper = viewerUiState.galleryWallpapers?.getOrNull(viewerViewModel.currentGalleryPage)
+                    ?: viewerUiState.wallpaper ?: return@HomeScreenContent
                 applyWallpaper(context, viewerViewModel, wallpaper)
             },
             onFullWallpaperFullScreenClick = {
                 viewerUiState.wallpaper?.run {
-                    navController.navigate(
+                    rootNavController.navigate(
                         WallpaperScreenDestination(
                             source = source,
                             wallpaperId = id,
                             thumbData = thumbData,
-                        ),
+                        ).route,
                     )
                 }
             },
             onFullWallpaperUploaderClick = onUploaderClick,
             onFullWallpaperDownloadPermissionsGranted = viewerViewModel::download,
+            onFullWallpaperDownloadAllPermissionsGranted = viewerViewModel::downloadAll,
+            onFullWallpaperLightDarkTypeFlagsChange = viewerViewModel::updateLightDarkTypeFlags,
+            fullWallpaperGalleryWallpapers = viewerUiState.galleryWallpapers,
+            fullWallpaperGalleryPageIndex = viewerUiState.galleryPageIndex,
+            onFullWallpaperGalleryPageChange = viewerViewModel::setGalleryPage,
+            showFullWallpaperTelegramAction = viewerUiState.telegramEnabled && viewerUiState.telegramIsConfigured,
+            onFullWallpaperPostToTelegramClick = {
+                val wallpaper = viewerUiState.galleryWallpapers?.getOrNull(viewerViewModel.currentGalleryPage)
+                    ?: viewerUiState.wallpaper ?: return@HomeScreenContent
+                viewerViewModel.postToTelegram(wallpaper)
+            },
         )
-
-        // PullRefreshIndicator(
-        //     modifier = Modifier
-        //         .align(Alignment.TopCenter)
-        //         .offset(y = SearchBar.Defaults.height - 8.dp),
-        //     refreshing = showRefreshingIndicator,
-        //     // refreshing = true,
-        //     state = refreshState,
-        // )
-        if (showRefreshingIndicator || refreshState.progress > 0) {
-            PullToRefreshContainer(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .offset(y = SearchBar.Defaults.height - 8.dp),
-                state = refreshState,
-                // contentColor = MaterialTheme.colorScheme.onSurface,
-                // indicator = if (showRefreshingIndicator) {
-                //     { PullToRefreshDefaults.Indicator(state = it) }
-                // } else {
-                //     {}
-                // },
-            )
-        }
     }
 
     if (uiState.showFilters) {
-        val state = rememberModalBottomSheetState(
-            skipPartiallyExpanded = uiState.selectedSource == OnlineSource.REDDIT,
+        val state = rememberAdaptiveBottomSheetState(
+            bottomSheetState = rememberModalBottomSheetState(
+                skipPartiallyExpanded = uiState.selectedSource == OnlineSource.REDDIT,
+            ),
         )
         val scope = rememberCoroutineScope()
         val initialSearch = if (uiState.isHome) {
@@ -428,6 +547,8 @@ fun HomeScreen(
             showQueryField = uiState.isHome,
             showNSFW = uiState.showNSFW,
             onChange = { localSearch = it },
+            redditSubredditFilter = uiState.redditSubredditFilter,
+            onRedditFilterChange = viewModel::updateRedditSubredditFilter,
             onErrorStateChange = { hasError = it },
             onDismissRequest = { viewModel.showFilters(false) },
         )
@@ -454,8 +575,19 @@ fun HomeScreen(
                 }
             },
             onSelect = {
-                viewModel.updateHomeSearch(it.search)
-                viewModel.showSavedSearches(false)
+                if (uiState.showSavedSearchesForSearchBar) {
+                    doSearch(
+                        mainSearch = uiState.mainSearch,
+                        navController = navController,
+                        searchBarViewModel = searchBarViewModel,
+                        search = it.search,
+                    )
+                    viewModel.showSavedSearches(false)
+                    searchBarViewModel.setActive(false)
+                } else {
+                    viewModel.updateHomeSearch(it.search)
+                    viewModel.showSavedSearches(false)
+                }
             },
             onDismissRequest = { viewModel.showSavedSearches(false) },
         )
@@ -482,4 +614,35 @@ fun HomeScreen(
             onDismissRequest = { viewModel.showRedditInitDialog(false) },
         )
     }
+
+    searchBarUiState.searchToDelete?.run {
+        AlertDialog(
+            title = { Text(text = this.query) },
+            text = { Text(text = stringResource(R.string.delete_suggestion_dialog_text)) },
+            confirmButton = {
+                TextButton(onClick = searchBarViewModel::onConfirmDeleteSearch) {
+                    Text(text = stringResource(R.string.confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = searchBarViewModel::onCancelDeleteSearch) {
+                    Text(text = stringResource(R.string.cancel))
+                }
+            },
+            onDismissRequest = searchBarViewModel::onCancelDeleteSearch,
+        )
+    }
+}
+
+private fun doSearch(
+    mainSearch: Search?,
+    search: Search,
+    searchBarViewModel: SearchBarViewModel,
+    navController: NavController,
+) {
+    if (mainSearch == search) {
+        return
+    }
+    searchBarViewModel.onSearch(search)
+    navController.search(search)
 }

@@ -3,7 +3,6 @@ package com.ammar.wallflow.ui.common.bottombar
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
@@ -15,14 +14,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
-import com.ammar.wallflow.ui.screens.NavGraph
+import com.ramcosta.composedestinations.spec.Route
 
 @Composable
 fun NavRail(
     modifier: Modifier = Modifier,
     currentDestination: NavDestination? = null,
     showLocalTab: Boolean = true,
-    onItemClick: (destination: NavGraph) -> Unit = {},
+    onItemClick: (destination: Route) -> Unit = {},
 ) {
     val bottomBarController = LocalBottomBarController.current
     val state by bottomBarController.state
@@ -33,10 +32,7 @@ fun NavRail(
         enter = slideInHorizontally(initialOffsetX = { -it }),
         exit = slideOutHorizontally(targetOffsetX = { -it }),
     ) {
-        NavigationRail(
-            modifier = modifier,
-        ) {
-            Spacer(Modifier.weight(1f))
+        NavigationRail {
             BottomBarDestination.entries
                 .filter {
                     if (it != BottomBarDestination.Local) {
@@ -47,6 +43,10 @@ fun NavRail(
                 }
                 .forEach { destination ->
                     NavigationRailItem(
+                        selected = currentDestination?.hierarchy?.any {
+                            it.route == destination.graph.route
+                        } == true,
+                        onClick = { onItemClick(destination.graph) },
                         icon = {
                             Icon(
                                 painter = painterResource(destination.icon),
@@ -54,13 +54,8 @@ fun NavRail(
                             )
                         },
                         label = { Text(stringResource(destination.label)) },
-                        selected = currentDestination?.hierarchy?.any {
-                            it.route == destination.graph.route
-                        } == true,
-                        onClick = { onItemClick(destination.graph) },
                     )
                 }
-            Spacer(Modifier.weight(1f))
         }
     }
 }

@@ -35,6 +35,7 @@ import com.ammar.wallflow.model.local.LocalWallpaper
 import com.ammar.wallflow.model.search.RedditSearch
 import com.ammar.wallflow.model.search.WallhavenSearch
 import com.ammar.wallflow.ui.screens.local.LocalSort
+import com.ammar.wallflow.workers.AutoWallpaperWorker.Companion.SourceChoice
 import kotlinx.coroutines.flow.Flow
 import okhttp3.Call
 import okhttp3.OkHttpClient
@@ -87,6 +88,19 @@ internal open class FakeAutoWallpaperHistoryDao : AutoWallpaperHistoryDao {
         throw RuntimeException()
     }
 
+    override suspend fun getAllBySourceChoice(sourceChoice: SourceChoice) = throw RuntimeException()
+
+    override suspend fun getAllSourceIdsBySourceChoice(sourceChoice: SourceChoice): List<String> {
+        throw RuntimeException()
+    }
+
+    override suspend fun getOldestSetOnSourceIdBySourceChoiceAndSourceIdNotIn(
+        sourceChoice: SourceChoice,
+        excludedSourceIds: Collection<String>,
+    ): String? {
+        throw RuntimeException()
+    }
+
     override suspend fun getBySourceId(
         sourceId: String,
         source: Source,
@@ -95,6 +109,13 @@ internal open class FakeAutoWallpaperHistoryDao : AutoWallpaperHistoryDao {
     }
 
     override suspend fun upsert(vararg autoWallpaperHistoryEntity: AutoWallpaperHistoryEntity) {
+        throw RuntimeException()
+    }
+
+    override suspend fun deleteBySourceIdsAndSourceChoice(
+        sourceIds: Collection<String>,
+        sourceChoice: SourceChoice,
+    ) {
         throw RuntimeException()
     }
 }
@@ -177,6 +198,10 @@ internal open class FakeFavoriteDao : FavoriteDao {
 
     override fun observeCount() = throw RuntimeException()
 
+    override suspend fun getCount(): Int {
+        throw RuntimeException()
+    }
+
     override suspend fun getBySourceIdAndType(
         sourceId: String,
         source: Source,
@@ -188,6 +213,14 @@ internal open class FakeFavoriteDao : FavoriteDao {
         throw RuntimeException()
     }
 
+    override suspend fun getFirstFreshExcludingIds(
+        excludingIds: Collection<Long>,
+    ): FavoriteEntity? = throw RuntimeException()
+
+    override suspend fun getByOldestSetOnAndIdsNotIn(
+        excludingIds: Collection<Long>,
+    ): FavoriteEntity? = throw RuntimeException()
+
     override suspend fun insertAll(favoriteEntities: Collection<FavoriteEntity>) {
         throw RuntimeException()
     }
@@ -196,7 +229,22 @@ internal open class FakeFavoriteDao : FavoriteDao {
         throw RuntimeException()
     }
 
-    override suspend fun deleteBySourceIdAndType(sourceId: String, source: Source) {
+    override suspend fun deleteBySourceIdAndSource(sourceId: String, source: Source) {
+        throw RuntimeException()
+    }
+
+    override suspend fun deleteBySourceIdsAndSource(sourceIds: Collection<String>, source: Source) {
+        throw RuntimeException()
+    }
+
+    override suspend fun getIdsBySourceIdsAndSource(
+        sourceIds: Collection<String>,
+        source: Source,
+    ): List<Long> {
+        throw RuntimeException()
+    }
+
+    override suspend fun getCountWhereIdsNotIn(ids: Collection<Long>): Int {
         throw RuntimeException()
     }
 }
@@ -376,6 +424,27 @@ internal open class FakeLocalWallpapersRepository : LocalWallpapersRepository {
     ): Wallpaper? {
         throw RuntimeException()
     }
+
+    override suspend fun getFirstFresh(
+        context: Context,
+        uris: Collection<Uri>,
+        excluding: Collection<Wallpaper>,
+    ): Wallpaper? = throw RuntimeException()
+
+    override suspend fun getByOldestSetOn(
+        context: Context,
+        excluding: Collection<Wallpaper>,
+    ): Wallpaper? {
+        throw RuntimeException()
+    }
+
+    override suspend fun getCountExcludingWallpapers(
+        context: Context,
+        uris: Collection<Uri>,
+        excluding: Collection<Wallpaper>,
+    ): Int {
+        throw RuntimeException()
+    }
 }
 
 internal open class FakeViewedDao : ViewedDao {
@@ -406,6 +475,34 @@ internal open class FakeLightDarkDao : LightDarkDao {
     ) = throw RuntimeException()
 
     override suspend fun getRandomByTypeFlag(typeFlags: Set<Int>) = throw RuntimeException()
+
+    override suspend fun getFirstFreshByTypeFlagsAndIdNotIn(
+        typeFlags: Set<Int>,
+        excludingIds: Collection<Long>,
+    ): LightDarkEntity? = throw RuntimeException()
+
+    override suspend fun getByOldestSetOnAndTypeFlagsAndIdsNotId(
+        typeFlags: Set<Int>,
+        excludingIds: Collection<Long>,
+    ) = throw RuntimeException()
+
+    override suspend fun getIdsBySourceIdsAndSource(
+        sourceIds: Collection<String>,
+        source: Source,
+    ): List<Long> {
+        throw RuntimeException()
+    }
+
+    override suspend fun getCountWhereTypeFlagsAndIdsNotIn(
+        typeFlags: Set<Int>,
+        ids: Collection<Long>,
+    ): Int {
+        throw RuntimeException()
+    }
+
+    // override suspend fun getAllInHistoryByTypeFlags(): List<AutoWallpaperHistoryEntity> {
+    //     throw RuntimeException()
+    // }
 
     override fun pagingSource() = throw RuntimeException()
 
