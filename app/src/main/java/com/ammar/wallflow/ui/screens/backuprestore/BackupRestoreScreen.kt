@@ -21,7 +21,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.ammar.wallflow.MIME_TYPE_JSON
 import com.ammar.wallflow.R
-import com.ammar.wallflow.extensions.safeLaunch
 import com.ammar.wallflow.navigation.AppNavGraphs.BackupRestoreNavGraph
 import com.ammar.wallflow.ui.common.TopBar
 import com.ammar.wallflow.utils.backupFileName
@@ -96,7 +95,7 @@ fun BackupRestoreScreen(
             options = uiState.backupOptions,
             backupProgress = uiState.backupProgress,
             onOptionsChange = viewModel::updateBackupOptions,
-            onFileInputClicked = { createDocumentLauncher.safeLaunch(context, backupFileName) },
+            onFileInputClicked = { createDocumentLauncher.launch(backupFileName) },
             onBackupClick = viewModel::performBackup,
             onDismissRequest = {
                 if (uiState.backupProgress != null) {
@@ -115,7 +114,7 @@ fun BackupRestoreScreen(
             restoreProgress = uiState.restoreProgress,
             exception = uiState.restoreException,
             onOptionsChange = viewModel::updateRestoreOptions,
-            onFileInputClicked = { openDocumentLauncher.safeLaunch(context, arrayOf("*/*")) },
+            onFileInputClicked = { openDocumentLauncher.launch(arrayOf("*/*")) },
             onRestoreClick = viewModel::performRestore,
             onDismissRequest = {
                 if (uiState.restoreProgress != null) {

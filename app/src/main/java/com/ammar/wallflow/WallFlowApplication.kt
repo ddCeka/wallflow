@@ -1,10 +1,7 @@
 package com.ammar.wallflow
 
-import android.app.ActivityManager
 import android.app.Application
-import android.os.Process
 import android.util.Log
-import androidx.core.content.ContextCompat
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.lifecycleScope
@@ -15,7 +12,6 @@ import coil.ImageLoaderFactory
 import com.ammar.wallflow.data.network.coil.WallhavenFallbackInterceptor
 import com.ammar.wallflow.data.repository.AppPreferencesRepository
 import com.ammar.wallflow.extensions.TAG
-import com.ammar.wallflow.utils.CrashReportHelper
 import com.ammar.wallflow.utils.NotificationChannels
 import com.ammar.wallflow.workers.AutoWallpaperWorker
 import com.ammar.wallflow.workers.CleanupWorker
@@ -25,9 +21,6 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
-import org.acra.ACRA
-import org.acra.data.StringFormat
-import org.acra.ktx.initAcra
 
 @HiltAndroidApp
 class WallFlowApplication : Application(), Configuration.Provider, ImageLoaderFactory {
@@ -64,58 +57,9 @@ class WallFlowApplication : Application(), Configuration.Provider, ImageLoaderFa
 
     override fun onCreate() {
         super.onCreate()
-        if (isAcraProcess()) {
-            // No need to setup anything if we are running the CrashReportActivity
-            return
-        }
-        initializeAcra()
         NotificationChannels.createChannels(this)
         scheduleAutoWallpaperWorker()
         scheduleCleanupWorker()
-    }
-
-    private fun initializeAcra() {
-        if (isAcraProcess()) {
-            // Do not init acra when we are in an acra process.
-            // This prevents any [crash -> report -> crash -> ...] loops
-            // in a rare chance that CrashReportActivity crashes itself
-            return
-        }
-        with(ProcessLifecycleOwner.get()) {
-            lifecycleScope.launch {
-                val acraEnabled = appPreferencesRepository
-                    .appPreferencesFlow
-                    .firstOrNull()
-                    ?.acraEnabled
-                    ?: true
-                if (acraEnabled) {
-                    initAcra {
-                        buildConfigClass = BuildConfig::class.java
-                        reportFormat = StringFormat.KEY_VALUE_LIST
-                        reportContent = CrashReportHelper.REPORT_FIELDS
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * From https://gitlab.com/fdroid/fdroidclient/-/blob/master/app/src/main/java/org/fdroid/fdroid/FDroidApp.java?ref_type=heads#L429
-     * Checks if the current process is an acra process
-     */
-    private fun isAcraProcess(): Boolean {
-        if (ACRA.isACRASenderServiceProcess()) {
-            return true
-        }
-        val manager = ContextCompat.getSystemService(
-            this,
-            ActivityManager::class.java,
-        ) ?: return false
-        val processes = manager.runningAppProcesses ?: return false
-        val pid = Process.myPid()
-        return processes.any { processInfo ->
-            processInfo.pid == pid && ACRA_ID == processInfo.processName
-        }
     }
 
     private fun scheduleAutoWallpaperWorker() {
@@ -169,7 +113,4 @@ class WallFlowApplication : Application(), Configuration.Provider, ImageLoaderFa
         }
         .build()
 
-    companion object {
-        private const val ACRA_ID = BuildConfig.APPLICATION_ID + ":acra"
-    }
 }
