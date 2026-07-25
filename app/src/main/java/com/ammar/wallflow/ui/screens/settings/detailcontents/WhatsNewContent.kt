@@ -16,7 +16,6 @@ import com.ammar.wallflow.ui.theme.WallFlowTheme
 private data class ChangelogEntry(val titleRes: Int, val bodyRes: Int)
 
 private val entries = listOf(
-    ChangelogEntry(R.string.whats_new_telegram_title, R.string.whats_new_telegram_body),
     ChangelogEntry(R.string.whats_new_gallery_title, R.string.whats_new_gallery_body),
     ChangelogEntry(R.string.whats_new_fav_gallery_title, R.string.whats_new_fav_gallery_body),
     ChangelogEntry(R.string.whats_new_collections_title, R.string.whats_new_collections_body),

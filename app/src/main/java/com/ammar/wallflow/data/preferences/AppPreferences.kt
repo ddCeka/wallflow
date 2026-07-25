@@ -57,28 +57,10 @@ data class AppPreferences(
     val mainRedditSearch: RedditSearch? = null,
     val viewedWallpapersPreferences: ViewedWallpapersPreferences = ViewedWallpapersPreferences(),
     val downloadLocation: Uri? = null,
-    val telegramPreferences: TelegramPreferences = TelegramPreferences(),
 ) {
     companion object {
         const val CURRENT_VERSION = 2
     }
-}
-
-@Serializable
-data class TelegramPreferences(
-    val enabled: Boolean = false,
-    val botToken: String = "",
-    val chatId: String = "",
-    val messageThreadId: String = "",
-    val postAfterDownload: Boolean = false,
-    val includeFileName: Boolean = true,
-    val includeDate: Boolean = true,
-    val includeTags: Boolean = true,
-    val includeSourceUrl: Boolean = true,
-    val silentNotification: Boolean = false,
-    val disableWebPagePreview: Boolean = false,
-) {
-    val isConfigured: Boolean get() = botToken.isNotBlank() && chatId.isNotBlank()
 }
 
 enum class ObjectDetectionDelegate {

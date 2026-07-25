@@ -163,12 +163,6 @@ fun WallpaperScreen(
             onFavoriteToggle = { viewerViewModel.toggleFavorite() },
             onBackClick = { navController.popBackStack() },
             onLightDarkTypeFlagsChange = viewerViewModel::updateLightDarkTypeFlags,
-            showTelegramAction = viewerUiState.telegramEnabled && viewerUiState.telegramIsConfigured,
-            onPostToTelegramClick = {
-                val wallpaper = viewerUiState.galleryWallpapers?.getOrNull(viewerViewModel.currentGalleryPage)
-                    ?: viewerUiState.wallpaper ?: return@WallpaperViewer
-                viewerViewModel.postToTelegram(wallpaper)
-            },
             galleryWallpapers = viewerUiState.galleryWallpapers,
             galleryPageIndex = viewerUiState.galleryPageIndex,
             onGalleryPageChange = viewerViewModel::setGalleryPage,

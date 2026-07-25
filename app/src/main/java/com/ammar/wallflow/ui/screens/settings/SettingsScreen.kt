@@ -96,7 +96,6 @@ import com.ammar.wallflow.ui.screens.settings.detailcontents.ManageAutoWallpaper
 import com.ammar.wallflow.ui.screens.settings.detailcontents.ObjectDetectionContent
 import com.ammar.wallflow.ui.screens.settings.detailcontents.RedditSubredditsContent
 import com.ammar.wallflow.ui.screens.settings.detailcontents.SavedSearchesContent
-import com.ammar.wallflow.ui.screens.settings.detailcontents.TelegramContent
 import com.ammar.wallflow.ui.screens.settings.detailcontents.ViewedWallpapersContent
 import com.ammar.wallflow.ui.screens.settings.detailcontents.ViewedWallpapersLookOptionsContent
 import com.ammar.wallflow.utils.StoragePermissions
@@ -609,10 +608,6 @@ private fun DetailContentScaffold(
                         viewModel = viewModel,
                         isExpanded = isExpanded,
                     )
-                    SettingsType.TELEGRAM -> TelegramSettingsScreen(
-                        viewModel = viewModel,
-                        isExpanded = isExpanded,
-                    )
                     SettingsType.REDDIT_SUBREDDITS -> RedditSubredditsSettingsScreen(
                         viewModel = viewModel,
                         isExpanded = isExpanded,
@@ -770,74 +765,6 @@ private fun RedditSubredditsSettingsScreen(
                     filters = newFilters,
                 )
             viewModel.updateHomeRedditSearch(newRedditSearch)
-        },
-    )
-}
-
-@Composable
-private fun TelegramSettingsScreen(
-    viewModel: SettingsViewModel,
-    isExpanded: Boolean,
-) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val telegramPreferences = uiState.appPreferences.telegramPreferences
-    TelegramContent(
-        isExpanded = isExpanded,
-        telegramPreferences = telegramPreferences,
-        onEnabledChange = { enabled ->
-            viewModel.updateTelegramPreferences(
-                telegramPreferences.copy(enabled = enabled),
-            )
-        },
-        onBotTokenChange = { token ->
-            viewModel.updateTelegramPreferences(
-                telegramPreferences.copy(botToken = token),
-            )
-        },
-        onChatIdChange = { chatId ->
-            viewModel.updateTelegramPreferences(
-                telegramPreferences.copy(chatId = chatId),
-            )
-        },
-        onMessageThreadIdChange = { threadId ->
-            viewModel.updateTelegramPreferences(
-                telegramPreferences.copy(messageThreadId = threadId),
-            )
-        },
-        onPostAfterDownloadChange = { post ->
-            viewModel.updateTelegramPreferences(
-                telegramPreferences.copy(postAfterDownload = post),
-            )
-        },
-        onIncludeFileNameChange = { value ->
-            viewModel.updateTelegramPreferences(
-                telegramPreferences.copy(includeFileName = value),
-            )
-        },
-        onIncludeDateChange = { value ->
-            viewModel.updateTelegramPreferences(
-                telegramPreferences.copy(includeDate = value),
-            )
-        },
-        onIncludeTagsChange = { value ->
-            viewModel.updateTelegramPreferences(
-                telegramPreferences.copy(includeTags = value),
-            )
-        },
-        onIncludeSourceUrlChange = { value ->
-            viewModel.updateTelegramPreferences(
-                telegramPreferences.copy(includeSourceUrl = value),
-            )
-        },
-        onSilentNotificationChange = { value ->
-            viewModel.updateTelegramPreferences(
-                telegramPreferences.copy(silentNotification = value),
-            )
-        },
-        onDisableWebPagePreviewChange = { value ->
-            viewModel.updateTelegramPreferences(
-                telegramPreferences.copy(disableWebPagePreview = value),
-            )
         },
     )
 }

@@ -121,8 +121,6 @@ internal fun CollectionsScreenContent(
     onQuickActionsApplyWallpaperClick: (Wallpaper) -> Unit = {},
     onQuickActionsDownloadClick: (Wallpaper) -> Unit = {},
     onQuickActionsShareClick: (Wallpaper) -> Unit = {},
-    showTelegram: Boolean = false,
-    onQuickActionsTelegramClick: (Wallpaper) -> Unit = {},
     fullWallpaper: Wallpaper? = null,
     fullWallpaperActionsVisible: Boolean = true,
     fullWallpaperDownloadStatus: DownloadStatus? = null,
@@ -150,8 +148,6 @@ internal fun CollectionsScreenContent(
     fullWallpaperShowGalleryFavDialog: Boolean = false,
     onFullWallpaperGalleryFavScopeSelected: (all: Boolean) -> Unit = {},
     onFullWallpaperGalleryFavScopeDismiss: () -> Unit = {},
-    showFullWallpaperTelegramAction: Boolean = false,
-    onFullWallpaperPostToTelegramClick: () -> Unit = {},
 ) {
     CollectionsScreenContent(
         modifier = modifier,
@@ -261,8 +257,6 @@ internal fun CollectionsScreenContent(
                 showGalleryFavScopeDialog = fullWallpaperShowGalleryFavDialog,
                 onGalleryFavScopeSelected = onFullWallpaperGalleryFavScopeSelected,
                 onGalleryFavScopeDismiss = onFullWallpaperGalleryFavScopeDismiss,
-                showTelegramAction = showFullWallpaperTelegramAction,
-                onPostToTelegramClick = onFullWallpaperPostToTelegramClick,
             )
         },
     )
@@ -273,13 +267,11 @@ internal fun CollectionsScreenContent(
         WallpaperQuickActionsSheet(
             wallpaper = wallpaper,
             isFavorite = isFav,
-            showTelegram = showTelegram,
             onDismiss = onQuickActionsDismiss,
             onFavoriteClick = { onQuickActionsFavoriteClick(wallpaper) },
             onApplyWallpaperClick = { onQuickActionsApplyWallpaperClick(wallpaper) },
             onDownloadClick = { onQuickActionsDownloadClick(wallpaper) },
             onShareLinkClick = { onQuickActionsShareClick(wallpaper) },
-            onPostToTelegramClick = { onQuickActionsTelegramClick(wallpaper) },
         )
     }
 }

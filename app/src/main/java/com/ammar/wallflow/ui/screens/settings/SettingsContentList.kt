@@ -65,14 +65,6 @@ fun SettingsContentList(
             onItemClick = onItemClick,
         )
         mainSettingsListItem(
-            type = SettingsType.TELEGRAM,
-            labelRes = R.string.telegram,
-            iconRes = R.drawable.baseline_send_24,
-            isExpanded = isExpanded,
-            selectedType = selectedType,
-            onItemClick = onItemClick,
-        )
-        mainSettingsListItem(
             type = SettingsType.REDDIT_SUBREDDITS,
             labelRes = R.string.reddit_subreddits,
             iconRes = R.drawable.reddit,

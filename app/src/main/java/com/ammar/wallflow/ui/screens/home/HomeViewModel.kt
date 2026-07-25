@@ -225,7 +225,6 @@ class HomeViewModel @Inject constructor(
                 sources = appPreferences.homeSources.toImmutableMap(),
                 prevMainWallhavenSearch = appPreferences.mainWallhavenSearch,
                 prevMainRedditSearch = appPreferences.mainRedditSearch,
-                telegramIsConfigured = appPreferences.telegramPreferences.enabled && appPreferences.telegramPreferences.isConfigured,
                 redditSubredditFilter = appPreferences.redditSubredditFilter,
             ),
         )
@@ -471,7 +470,6 @@ data class HomeUiState(
     val prevMainWallhavenSearch: WallhavenSearch? = null,
     val prevMainRedditSearch: RedditSearch? = null,
     val quickActionsWallpaper: Wallpaper? = null,
-    val telegramIsConfigured: Boolean = false,
     val redditSubredditFilter: RedditSubredditFilter = RedditSubredditFilter(),
 ) {
     val isHome = mainSearch == null

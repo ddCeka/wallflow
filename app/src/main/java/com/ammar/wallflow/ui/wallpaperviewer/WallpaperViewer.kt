@@ -121,8 +121,6 @@ fun WallpaperViewer(
     onFavoriteToggle: (Boolean) -> Unit = {},
     onBackClick: () -> Unit = {},
     onLightDarkTypeFlagsChange: (Int) -> Unit = {},
-    showTelegramAction: Boolean = false,
-    onPostToTelegramClick: () -> Unit = {},
     galleryWallpapers: List<Wallpaper>? = null,
     galleryPageIndex: Int = 0,
     onGalleryPageChange: (Int) -> Unit = {},
@@ -416,11 +414,6 @@ fun WallpaperViewer(
                     onLightDarkTypeFlagsChange = onLightDarkTypeFlagsChange,
                     onShowLightDarkInfoClick = { showLightDarkInfo = true },
                     onInfoClick = onInfoClick,
-                    showTelegramAction = showTelegramAction,
-                    onPostToTelegramClick = {
-                        if (inGalleryMode) onGalleryPageChange(pagerState.currentPage)
-                        onPostToTelegramClick()
-                    },
                 )
             }
         }

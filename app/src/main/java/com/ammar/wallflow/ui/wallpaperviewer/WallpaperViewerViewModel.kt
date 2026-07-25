@@ -177,8 +177,6 @@ class WallpaperViewerViewModel @Inject constructor(
                 tagsExifWriteType = appPreferences.tagsExifWriteType,
                 rememberViewedWallpapers = appPreferences.viewedWallpapersPreferences.enabled,
                 lightDarkTypeFlags = lightDarkTypeFlags ?: LightDarkType.UNSPECIFIED,
-                telegramEnabled = appPreferences.telegramPreferences.enabled,
-                telegramIsConfigured = appPreferences.telegramPreferences.isConfigured,
                 galleryWallpapers = galleryWallpapers,
                 galleryPageIndex = galleryPageIndex,
             ),
@@ -245,35 +243,6 @@ class WallpaperViewerViewModel @Inject constructor(
 
     fun showInfo(show: Boolean = true) = localUiState.update {
         it.copy(showInfo = partial(show))
-    }
-
-    /** Called from the full wallpaper viewer – wallpaper is already in [uiState]. */
-    fun postToTelegram() = postToTelegramInternal(uiState.value.wallpaper)
-
-    /**
-     * Called from quick-action handlers that already have the [Wallpaper] object.
-     * Using an overload instead of a default parameter keeps the no-arg [postToTelegram]
-     * usable as a `() -> Unit` function reference in [WallpaperScreen].
-     */
-    fun postToTelegram(wallpaper: Wallpaper) = postToTelegramInternal(wallpaper)
-
-    private fun postToTelegramInternal(wallpaper: Wallpaper?) {
-        if (wallpaper == null || wallpaper !is DownloadableWallpaper) return
-        viewModelScope.launch {
-            val state = uiState.value
-            val tags = if (state.writeTagsToExif && wallpaper is WallhavenWallpaper) {
-                wallpaper.tags?.map { it.name }
-            } else {
-                null
-            }
-            downloadManager.requestDownload(
-                context = application,
-                wallpaper = wallpaper,
-                tags = tags,
-                tagsExifWriteType = state.tagsExifWriteType,
-                postToTelegram = true,
-            )
-        }
     }
 
     fun download() {
@@ -421,8 +390,6 @@ data class WallpaperViewerUiState(
     val tagsExifWriteType: ExifWriteType = ExifWriteType.APPEND,
     val rememberViewedWallpapers: Boolean = false,
     val lightDarkTypeFlags: Int = LightDarkType.UNSPECIFIED,
-    val telegramEnabled: Boolean = false,
-    val telegramIsConfigured: Boolean = false,
     val galleryWallpapers: List<Wallpaper>? = null,
     val galleryPageIndex: Int = 0,
 )

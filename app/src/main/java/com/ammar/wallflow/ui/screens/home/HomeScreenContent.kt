@@ -104,13 +104,11 @@ internal fun HomeScreenContent(
     onWallpaperFavoriteClick: (wallpaper: Wallpaper) -> Unit = {},
     onWallpaperLongClick: ((wallpaper: Wallpaper) -> Unit)? = null,
     quickActionsWallpaper: Wallpaper? = null,
-    showTelegram: Boolean = false,
     onQuickActionsDismiss: () -> Unit = {},
     onQuickActionsFavoriteClick: (Wallpaper) -> Unit = {},
     onQuickActionsApplyWallpaperClick: (Wallpaper) -> Unit = {},
     onQuickActionsDownloadClick: (Wallpaper) -> Unit = {},
     onQuickActionsShareClick: (Wallpaper) -> Unit = {},
-    onQuickActionsTelegramClick: (Wallpaper) -> Unit = {},
     onTagClick: (wallhavenTag: WallhavenTag) -> Unit = {},
     onFABClick: () -> Unit = {},
     onRefresh: () -> Unit = {},
@@ -129,8 +127,6 @@ internal fun HomeScreenContent(
     fullWallpaperGalleryWallpapers: List<Wallpaper>? = null,
     fullWallpaperGalleryPageIndex: Int = 0,
     onFullWallpaperGalleryPageChange: (Int) -> Unit = {},
-    showFullWallpaperTelegramAction: Boolean = false,
-    onFullWallpaperPostToTelegramClick: () -> Unit = {},
 ) {
     HomeScreenContent(
         modifier = modifier,
@@ -162,13 +158,11 @@ internal fun HomeScreenContent(
                 onWallpaperFavoriteClick = onWallpaperFavoriteClick,
                 onWallpaperLongClick = onWallpaperLongClick,
                 quickActionsWallpaper = quickActionsWallpaper,
-                showTelegram = showTelegram,
                 onQuickActionsDismiss = onQuickActionsDismiss,
                 onQuickActionsFavoriteClick = onQuickActionsFavoriteClick,
                 onQuickActionsApplyWallpaperClick = onQuickActionsApplyWallpaperClick,
                 onQuickActionsDownloadClick = onQuickActionsDownloadClick,
                 onQuickActionsShareClick = onQuickActionsShareClick,
-                onQuickActionsTelegramClick = onQuickActionsTelegramClick,
                 onFABClick = onFABClick,
                 onRefresh = onRefresh,
             )
@@ -205,8 +199,6 @@ internal fun HomeScreenContent(
                 galleryWallpapers = fullWallpaperGalleryWallpapers,
                 galleryPageIndex = fullWallpaperGalleryPageIndex,
                 onGalleryPageChange = onFullWallpaperGalleryPageChange,
-                showTelegramAction = showFullWallpaperTelegramAction,
-                onPostToTelegramClick = onFullWallpaperPostToTelegramClick,
             )
         },
     )
@@ -270,13 +262,11 @@ private fun Feed(
     onWallpaperFavoriteClick: (Wallpaper) -> Unit = {},
     onWallpaperLongClick: ((Wallpaper) -> Unit)? = null,
     quickActionsWallpaper: Wallpaper? = null,
-    showTelegram: Boolean = false,
     onQuickActionsDismiss: () -> Unit = {},
     onQuickActionsFavoriteClick: (Wallpaper) -> Unit = {},
     onQuickActionsApplyWallpaperClick: (Wallpaper) -> Unit = {},
     onQuickActionsDownloadClick: (Wallpaper) -> Unit = {},
     onQuickActionsShareClick: (Wallpaper) -> Unit = {},
-    onQuickActionsTelegramClick: (Wallpaper) -> Unit = {},
     onFABClick: () -> Unit = {},
     onRefresh: () -> Unit = {},
 ) {
@@ -375,13 +365,11 @@ private fun Feed(
         WallpaperQuickActionsSheet(
             wallpaper = wallpaper,
             isFavorite = isFav,
-            showTelegram = showTelegram,
             onDismiss = onQuickActionsDismiss,
             onFavoriteClick = { onQuickActionsFavoriteClick(wallpaper) },
             onApplyWallpaperClick = { onQuickActionsApplyWallpaperClick(wallpaper) },
             onDownloadClick = { onQuickActionsDownloadClick(wallpaper) },
             onShareLinkClick = { onQuickActionsShareClick(wallpaper) },
-            onPostToTelegramClick = { onQuickActionsTelegramClick(wallpaper) },
         )
     }
 }

@@ -194,11 +194,6 @@ fun CollectionsScreen(
                 shareWallpaperUrl(context, wallpaper)
                 viewModel.setQuickActionsWallpaper(null)
             },
-            showTelegram = uiState.telegramIsConfigured,
-            onQuickActionsTelegramClick = { wallpaper ->
-                viewerViewModel.postToTelegram(wallpaper)
-                viewModel.setQuickActionsWallpaper(null)
-            },
             fullWallpaper = viewerUiState.wallpaper,
             fullWallpaperActionsVisible = viewerUiState.actionsVisible,
             fullWallpaperDownloadStatus = viewerUiState.downloadStatus,
@@ -246,12 +241,6 @@ fun CollectionsScreen(
             fullWallpaperShowGalleryFavDialog = viewerUiState.showGalleryFavDialog,
             onFullWallpaperGalleryFavScopeSelected = viewerViewModel::toggleFavoriteScope,
             onFullWallpaperGalleryFavScopeDismiss = viewerViewModel::dismissGalleryFavDialog,
-            showFullWallpaperTelegramAction = viewerUiState.telegramEnabled && viewerUiState.telegramIsConfigured,
-            onFullWallpaperPostToTelegramClick = {
-                val wallpaper = viewerUiState.galleryWallpapers?.getOrNull(viewerViewModel.currentGalleryPage)
-                    ?: viewerUiState.wallpaper ?: return@CollectionsScreenContent
-                viewerViewModel.postToTelegram(wallpaper)
-            },
         )
     }
 }

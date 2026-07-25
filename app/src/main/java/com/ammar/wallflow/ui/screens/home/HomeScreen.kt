@@ -392,7 +392,6 @@ fun HomeScreen(
             onWallpaperFavoriteClick = viewModel::toggleFavorite,
             onWallpaperLongClick = viewModel::setQuickActionsWallpaper,
             quickActionsWallpaper = uiState.quickActionsWallpaper,
-            showTelegram = uiState.telegramIsConfigured,
             onQuickActionsDismiss = { viewModel.setQuickActionsWallpaper(null) },
             onQuickActionsFavoriteClick = { wallpaper ->
                 viewModel.toggleFavorite(wallpaper)
@@ -407,13 +406,6 @@ fun HomeScreen(
             },
             onQuickActionsShareClick = { wallpaper ->
                 shareWallpaperUrl(context, wallpaper)
-                viewModel.setQuickActionsWallpaper(null)
-            },
-            onQuickActionsTelegramClick = { wallpaper ->
-                // Pass wallpaper directly – avoids the race condition where
-                // setWallpaper() triggers an async fetch and postToTelegram()
-                // would read a null wallpaper from uiState.
-                viewerViewModel.postToTelegram(wallpaper)
                 viewModel.setQuickActionsWallpaper(null)
             },
             onTagClick = onTagClick,
@@ -457,12 +449,6 @@ fun HomeScreen(
             fullWallpaperGalleryWallpapers = viewerUiState.galleryWallpapers,
             fullWallpaperGalleryPageIndex = viewerUiState.galleryPageIndex,
             onFullWallpaperGalleryPageChange = viewerViewModel::setGalleryPage,
-            showFullWallpaperTelegramAction = viewerUiState.telegramEnabled && viewerUiState.telegramIsConfigured,
-            onFullWallpaperPostToTelegramClick = {
-                val wallpaper = viewerUiState.galleryWallpapers?.getOrNull(viewerViewModel.currentGalleryPage)
-                    ?: viewerUiState.wallpaper ?: return@HomeScreenContent
-                viewerViewModel.postToTelegram(wallpaper)
-            },
         )
     }
 

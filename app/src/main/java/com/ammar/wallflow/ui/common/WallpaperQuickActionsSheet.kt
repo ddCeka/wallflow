@@ -50,7 +50,6 @@ import com.ammar.wallflow.model.wallhaven.WallhavenWallpaper
  *  • Apply as wallpaper
  *  • Download
  *  • Share
- *  • Post to Telegram (shown only when Telegram is configured)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,14 +59,12 @@ fun WallpaperQuickActionsSheet(
     showApplyWallpaper: Boolean = true,
     showDownload: Boolean = true,
     showShare: Boolean = true,
-    showTelegram: Boolean = false,
     onDismiss: () -> Unit = {},
     onFavoriteClick: () -> Unit = {},
     onApplyWallpaperClick: () -> Unit = {},
     onDownloadClick: () -> Unit = {},
     onShareLinkClick: () -> Unit = {},
     onShareImageClick: () -> Unit = {},
-    onPostToTelegramClick: () -> Unit = {},
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
@@ -186,23 +183,6 @@ fun WallpaperQuickActionsSheet(
                         },
                         onClick = {
                             onShareLinkClick()
-                            onDismiss()
-                        },
-                    )
-                }
-
-                // Post to Telegram
-                if (showTelegram) {
-                    QuickActionItem(
-                        label = stringResource(R.string.post_to_telegram),
-                        icon = {
-                            Icon(
-                                painter = painterResource(R.drawable.baseline_send_24),
-                                contentDescription = null,
-                            )
-                        },
-                        onClick = {
-                            onPostToTelegramClick()
                             onDismiss()
                         },
                     )

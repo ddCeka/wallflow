@@ -246,8 +246,6 @@ class CollectionsViewModel @Inject constructor(
                 availableDates = favorites.mapTo(HashSet()) { e ->
                     e.favoritedOn.toLocalDateTime(TimeZone.UTC).date
                 }.toImmutableSet(),
-                telegramIsConfigured = appPreferences.telegramPreferences.enabled &&
-                    appPreferences.telegramPreferences.isConfigured,
             ),
         )
     }.stateIn(
@@ -307,5 +305,4 @@ data class CollectionsUiState(
     val showDateSeparators: Boolean = false,
     val availableDates: ImmutableSet<LocalDate> = persistentSetOf(),
     val quickActionsWallpaper: Wallpaper? = null,
-    val telegramIsConfigured: Boolean = false,
 )

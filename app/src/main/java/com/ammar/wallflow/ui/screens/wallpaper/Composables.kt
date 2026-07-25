@@ -99,8 +99,6 @@ fun WallpaperActions(
     onLightDarkTypeFlagsChange: (Int) -> Unit = {},
     onShowLightDarkInfoClick: () -> Unit = {},
     onInfoClick: () -> Unit = {},
-    showTelegramAction: Boolean = false,
-    onPostToTelegramClick: () -> Unit = {},
 ) {
     HorizontalFloatingToolbar(
         expanded = showApplyWallpaperAction,
@@ -182,9 +180,6 @@ fun WallpaperActions(
             onFlagsChange = onLightDarkTypeFlagsChange,
             onShowLightDarkInfoClick = onShowLightDarkInfoClick,
         )
-        if (showTelegramAction) {
-            TelegramButton(onClick = onPostToTelegramClick)
-        }
     }
 }
 
@@ -536,34 +531,6 @@ internal fun FavoriteButton(
                     },
                 ),
                 contentDescription = stringResource(R.string.favorite),
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun TelegramButton(
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit = {},
-) {
-    TooltipBox(
-        modifier = modifier,
-        positionProvider = rememberPlainTooltipPositionProvider(),
-        state = rememberTooltipState(),
-        tooltip = {
-            PlainTooltip {
-                Text(text = stringResource(R.string.post_to_telegram))
-            }
-        },
-    ) {
-        IconButton(
-            modifier = modifier,
-            onClick = onClick,
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.baseline_send_24),
-                contentDescription = stringResource(R.string.post_to_telegram),
             )
         }
     }

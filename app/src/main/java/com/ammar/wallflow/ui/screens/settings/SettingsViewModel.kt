@@ -21,7 +21,6 @@ import com.ammar.wallflow.data.preferences.AutoWallpaperPreferences
 import com.ammar.wallflow.data.preferences.LayoutPreferences
 import com.ammar.wallflow.data.preferences.LookAndFeelPreferences
 import com.ammar.wallflow.data.preferences.ObjectDetectionPreferences
-import com.ammar.wallflow.data.preferences.TelegramPreferences
 import com.ammar.wallflow.data.preferences.ViewedWallpapersLook
 import com.ammar.wallflow.data.repository.AppPreferencesRepository
 import com.ammar.wallflow.data.repository.FavoritesRepository
@@ -168,11 +167,6 @@ class SettingsViewModel @Inject constructor(
     fun updateTagsWriteType(writeType: ExifWriteType) = viewModelScope.launch {
         appPreferencesRepository.updateTagsWriteType(writeType)
     }
-
-    fun updateTelegramPreferences(telegramPreferences: TelegramPreferences) =
-        viewModelScope.launch {
-            appPreferencesRepository.updateTelegramPreferences(telegramPreferences)
-        }
 
     fun updateHomeRedditSearch(redditSearch: RedditSearch) =
         viewModelScope.launch {
