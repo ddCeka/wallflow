@@ -411,6 +411,8 @@ Auto wallpaper will almost never run at this time. It is dependent on many facto
     <string name="all_images">All %d images</string>
     <!-- What\'s New -->
     <string name="whats_new">What\'s new</string>
+    <string name="whats_new_reddit_title">Reddit login</string>
+    <string name="whats_new_reddit_body">Reddit login now added on Account settings below wallhaven key api input. Now reddit search work again as long as the cookie is still valid. Thought it likely not the best approach and there are other way like parsing rss but that basically need a rewrite on reddit library baked from upstream.</string>
     <string name="whats_new_gallery_title">Reddit gallery carousel</string>
     <string name="whats_new_gallery_body">Reddit posts that contain multiple images now open as a swipeable carousel in the viewer. The gallery page indicator is shown in the top bar. Enable or disable the carousel in Settings → Look &amp; Feel → Layout. When downloading, you can download the current image or all images at once.</string>
     <string name="whats_new_fav_gallery_title">Per-image gallery favorites</string>
