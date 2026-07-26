@@ -33,14 +33,6 @@ fun SettingsContentList(
         ),
     ) {
         mainSettingsListItem(
-            type = SettingsType.WHATS_NEW,
-            labelRes = R.string.whats_new,
-            iconRes = R.drawable.baseline_new_releases_24,
-            isExpanded = isExpanded,
-            selectedType = selectedType,
-            onItemClick = onItemClick,
-        )
-        mainSettingsListItem(
             type = SettingsType.ACCOUNT,
             labelRes = R.string.account,
             iconRes = R.drawable.baseline_person_24,

@@ -93,7 +93,6 @@ import com.ammar.wallflow.ui.screens.settings.composables.ObjectDetectionModelEd
 import com.ammar.wallflow.ui.screens.settings.composables.ObjectDetectionModelOptionsDialog
 import com.ammar.wallflow.ui.screens.settings.composables.ThemeOptionsDialog
 import com.ammar.wallflow.ui.screens.settings.detailcontents.AccountContent
-import com.ammar.wallflow.ui.screens.settings.detailcontents.WhatsNewContent
 import com.ammar.wallflow.ui.screens.settings.detailcontents.AutoWallpaperContent
 import com.ammar.wallflow.ui.screens.settings.detailcontents.DownloadsContent
 import com.ammar.wallflow.ui.screens.settings.detailcontents.LayoutSettingsScreenContent
@@ -645,9 +644,6 @@ private fun DetailContentScaffold(
                 label = "Settings Detail Content",
             ) { type ->
                 when (type) {
-                    SettingsType.WHATS_NEW -> WhatsNewContent(
-                        isExpanded = isExpanded,
-                    )
                     SettingsType.ACCOUNT -> AccountContent(
                         isExpanded = isExpanded,
                         onWallhavenApiKeyItemClick = onWallhavenApiKeyItemClick,

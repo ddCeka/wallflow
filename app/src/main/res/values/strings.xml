@@ -409,22 +409,4 @@ Auto wallpaper will almost never run at this time. It is dependent on many facto
     <string name="gallery_fav_message">Apply to all images in this gallery, or just this one?</string>
     <string name="this_image_only">This image only</string>
     <string name="all_images">All %d images</string>
-    <!-- What\'s New -->
-    <string name="whats_new">What\'s new</string>
-    <string name="whats_new_reddit_title">Reddit login</string>
-    <string name="whats_new_reddit_body">Reddit login now added on Account settings below wallhaven key api input. Now reddit search work again as long as the cookie is still valid. Thought it likely not the best approach and there are other way like parsing rss but that basically need a rewrite on reddit library baked from upstream.</string>
-    <string name="whats_new_gallery_title">Reddit gallery carousel</string>
-    <string name="whats_new_gallery_body">Reddit posts that contain multiple images now open as a swipeable carousel in the viewer. The gallery page indicator is shown in the top bar. Enable or disable the carousel in Settings → Look &amp; Feel → Layout. When downloading, you can download the current image or all images at once.</string>
-    <string name="whats_new_fav_gallery_title">Per-image gallery favorites</string>
-    <string name="whats_new_fav_gallery_body">Tapping the heart in gallery mode now shows a dialog asking whether to favorite/unfavorite just the current image or all images in the gallery, so you have full control over which gallery pages are saved.</string>
-    <string name="whats_new_collections_title">Collections filtering &amp; date separators</string>
-    <string name="whats_new_collections_body">The Collections screen now has a Filters chip to narrow favorites by source (Wallhaven / Reddit), content rating, appearance (light / dark), and a specific favorited date. The date picker only shows dates on which you actually saved wallpapers. Turn on date separators in the filter sheet to group favorites by day.</string>
-    <string name="whats_new_quick_actions_title">Quick-action sheet</string>
-    <string name="whats_new_quick_actions_body">Long-press any wallpaper card to open a quick-action bottom sheet. From there you can favorite, apply, download, or share the link — without having to open the full viewer.</string>
-    <string name="whats_new_accent_title">Accent color picker</string>
-    <string name="whats_new_accent_body">Pick a custom seed color for the entire app in Settings → Look &amp; Feel. Swatches morph between circle and rounded-square shapes as you select them (Material 3 Expressive). Choose "Default" to fall back to your system dynamic color.</string>
-    <string name="whats_new_subreddits_title">Subreddit filters</string>
-    <string name="whats_new_subreddits_body">Define a global include or exclude list for subreddits in Settings → Reddit Subreddits. Any Reddit search will automatically honor those filters, so you never see wallpapers from subreddits you don\'t want.</string>
-    <string name="whats_new_m3exp_title">Material 3 Expressive UI</string>
-    <string name="whats_new_m3exp_body">The app now uses Material 3 1.5-alpha (Expressive). Notable changes: the navigation rail on landscape/medium screens uses the wider WideNavigationRail layout; loading bars use the new wavy animation; the bottom navigation bar shows all tabs correctly in portrait.</string>
 </resources>
