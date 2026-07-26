@@ -83,6 +83,10 @@ class AppPreferencesRepository @Inject constructor(
         dataStore.edit { it.updateWallhavenApikey(wallhavenApiKey) }
     }
 
+    suspend fun updateRedditCookie(redditCookie: String) = withContext(ioDispatcher) {
+        dataStore.edit { it.updateRedditCookie(redditCookie) }
+    }
+
     suspend fun updateHomeWallhavenSearch(search: WallhavenSearch) = withContext(ioDispatcher) {
         dataStore.edit { it.updateHomeWallhavenSearch(search) }
     }
@@ -143,6 +147,10 @@ class AppPreferencesRepository @Inject constructor(
 
     private fun MutablePreferences.updateWallhavenApikey(wallhavenApiKey: String) {
         set(PreferencesKeys.WALLHAVEN_API_KEY, wallhavenApiKey)
+    }
+
+    private fun MutablePreferences.updateRedditCookie(redditCookie: String) {
+        set(PreferencesKeys.REDDIT_COOKIE, redditCookie)
     }
 
     private fun MutablePreferences.updateHomeWallhavenSearch(search: WallhavenSearch) {
@@ -365,6 +373,7 @@ class AppPreferencesRepository @Inject constructor(
         return AppPreferences(
             version = preferences[PreferencesKeys.VERSION] ?: AppPreferences.CURRENT_VERSION,
             wallhavenApiKey = getWallhavenApiKey(preferences),
+            redditCookie = getRedditCookie(preferences),
             homeWallhavenSearch = getHomeWallhavenSearch(preferences),
             homeRedditSearch = homeRedditSearch,
             homeSources = getHomeSources(preferences, homeRedditSearch),
@@ -688,6 +697,9 @@ class AppPreferencesRepository @Inject constructor(
     private fun getWallhavenApiKey(preferences: Preferences) =
         preferences[PreferencesKeys.WALLHAVEN_API_KEY] ?: ""
 
+    private fun getRedditCookie(preferences: Preferences) =
+        preferences[PreferencesKeys.REDDIT_COOKIE] ?: ""
+
     private fun parseFrequency(freqStr: String?) = try {
         if (freqStr != null) {
             DateTimePeriod.parse(freqStr)
@@ -721,6 +733,8 @@ class AppPreferencesRepository @Inject constructor(
 
     suspend fun getWallHavenApiKey() = getWallhavenApiKey(dataStore.data.first())
 
+    suspend fun getRedditCookie() = getRedditCookie(dataStore.data.first())
+
     suspend fun getAutoWallpaperWorkRequestId() = getAutoWallpaperPreferences(
         dataStore.data.first(),
     ).workRequestId
@@ -741,6 +755,7 @@ class AppPreferencesRepository @Inject constructor(
                     appPreferences.version ?: AppPreferences.CURRENT_VERSION,
                 )
                 updateWallhavenApikey(appPreferences.wallhavenApiKey)
+                updateRedditCookie(appPreferences.redditCookie)
                 updateHomeWallhavenSearch(appPreferences.homeWallhavenSearch)
                 appPreferences.homeRedditSearch?.run {
                     updateHomeRedditSearch(this@run)
