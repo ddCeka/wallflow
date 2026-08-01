@@ -40,7 +40,7 @@ android {
         minSdk = 24
         targetSdk = 35
         versionCode = 26
-        versionName = "2.6.5"
+        versionName = "2.6.6"
 
         val abi = getAbi()
         ndk {
