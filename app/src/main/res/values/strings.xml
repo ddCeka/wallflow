@@ -181,7 +181,7 @@ Auto wallpaper will almost never run at this time. It is dependent on many facto
     <string name="delete_saved_search_dialog_title">Delete saved search \'%1s\'?</string>
     <string name="permission_is_required">%1s is required</string>
     <string name="invalid_api_key_provided">Invalid wallhaven.cc API key provided.</string>
-    <string name="reddit_unauthorised">Reddit session expired or invalid. Login again.</string>
+    <string name="reddit_unauthorised">Invalid reddit session. Clear webview and login again.</string>
     <string name="rate_limited_please_try_again_after_some_time">%s: Rate limited. Please try again after some time.</string>
     <string name="error">Error</string>
     <string name="fix">Fix</string>
@@ -264,7 +264,6 @@ Auto wallpaper will almost never run at this time. It is dependent on many facto
     <string name="auto_wallpaper_download_desc">Download wallpaper when used in auto wallpaper</string>
     <string name="change_wallpaper_tile_label">Change Wallpaper</string>
     <string name="no_sources_set">No sources set</string>
-    <string name="tap_to_change_wallpaper">Tap to change wallpaper</string>
     <string name="changing">Changing…</string>
     <string name="manage_local">Manage Local</string>
     <string name="dirs">Directories</string>

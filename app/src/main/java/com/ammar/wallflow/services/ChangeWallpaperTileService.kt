@@ -55,7 +55,6 @@ class ChangeWallpaperTileService : TileService() {
 
     private data class State(
         val label: String,
-        val subtitle: String?,
         val state: Int,
     )
 
@@ -120,9 +119,6 @@ class ChangeWallpaperTileService : TileService() {
     private fun updateTile(state: State) {
         qsTile?.apply {
             label = state.label
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                subtitle = state.subtitle
-            }
             this.state = state.state
             try {
                 this.updateTile()
@@ -156,11 +152,6 @@ class ChangeWallpaperTileService : TileService() {
                     status is Running -> Tile.STATE_ACTIVE
                     !prefs.anySourceEnabled -> Tile.STATE_UNAVAILABLE
                     else -> Tile.STATE_INACTIVE
-                },
-                subtitle = when {
-                    status is Running -> getString(R.string.changing)
-                    !prefs.anySourceEnabled -> getString(R.string.no_sources_set)
-                    else -> getString(R.string.tap_to_change_wallpaper)
                 },
             )
         }.collectLatest {

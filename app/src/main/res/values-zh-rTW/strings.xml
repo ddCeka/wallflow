@@ -244,7 +244,6 @@
     <string name="auto_wallpaper_download_desc">使用自動更換桌布功能時，自動下載該桌布</string>
     <string name="change_wallpaper_tile_label">點此更換手機桌布</string>
     <string name="no_sources_set">尚未設定桌布來源</string>
-    <string name="tap_to_change_wallpaper">輕觸以變更桌布</string>
     <string name="changing">正在更換桌布…</string>
     <string name="manage_local">管理本機桌布</string>
     <string name="dirs">資料夾</string>

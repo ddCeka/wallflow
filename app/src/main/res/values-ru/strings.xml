@@ -245,7 +245,6 @@
     <string name="auto_wallpaper_download_desc">"Загрузка обоев при их использовании для смены обоев"</string>
     <string name="change_wallpaper_tile_label">"Изменить обои"</string>
     <string name="no_sources_set">"Нет заданных источников"</string>
-    <string name="tap_to_change_wallpaper">"Нажмите, чтобы изменить обои"</string>
     <string name="changing">"Изменение…"</string>
     <string name="manage_local">"Управление локальными"</string>
     <string name="dirs">"Каталоги"</string>

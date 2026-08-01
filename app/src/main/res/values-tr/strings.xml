@@ -100,7 +100,6 @@
     <string name="manage_local">Yereli yönet</string>
     <string name="blur_nsfw_wallpapers">NSFW duvar kağıtlarını bulanıklaştır</string>
     <string name="name">İsim</string>
-    <string name="tap_to_change_wallpaper">Duvar kağıdını değiştirmek için dokun</string>
     <string name="edit_model">Modeli düzenle</string>
     <string name="constraints">Kısıtlamalar</string>
     <string name="resolutions">Çözünürlükler</string>
@@ -359,6 +358,5 @@
     <string name="no_light_dark_found">Açık/Koyu duvar kağıdı bulunamadı</string>
     <string name="use_same_freq_homescreen_lockscreen">Ana ekran ve kilit ekranı için aynı sıklığı kullan</string>
     <string name="current_target_disabled">Geçerli duvar kağıdı hedefi tercihlerde devre dışı bırakıldı</string>
-    <string name="target_activity_not_found">Hedef etkinlik bulunamadı</string>
     <string name="next_run_approximate">Sonraki çalışma (yaklaşık)</string>
 </resources>

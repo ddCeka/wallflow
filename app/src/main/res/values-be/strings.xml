@@ -84,7 +84,6 @@
     <string name="manage_local">Кіраванне лакальнымі</string>
     <string name="blur_nsfw_wallpapers">Размываць NSFW шпалеры</string>
     <string name="name">Імя</string>
-    <string name="tap_to_change_wallpaper">Націсніце, каб змяніць шпалеры</string>
     <string name="constraints">Абмежаванні</string>
     <string name="new_sources">Новыя крыніцы</string>
     <string name="use_object_detection_desc">Абрэзаць шпалеры з дапамогай выяўлення аб\'ектаў</string>
