@@ -388,15 +388,15 @@ class HomeViewModel @Inject constructor(
             return@launch
         }
         appPreferencesRepository.updateHomeSources(currentSources)
+
+        val prefs = appPreferencesRepository.appPreferencesFlow.first()
         localUiState.update {
             it.copy(
                 selectedSource = partial(
                     getCorrectSelectedSource(
                         local = it,
                         homeSource = currentSources,
-                        homeRedditSearch = appPreferencesRepository.appPreferencesFlow
-                            .first()
-                            .homeRedditSearch,
+                        homeRedditSearch = prefs.homeRedditSearch,
                     ),
                 ),
             )
