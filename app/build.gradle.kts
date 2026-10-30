@@ -88,10 +88,6 @@ android {
                 signingConfig = signingConfigs.getByName("release")
             }
         }
-
-        create("alpha") {
-            initWith(getByName("release"))
-        }
     }
 
     flavorDimensions += "feature"
