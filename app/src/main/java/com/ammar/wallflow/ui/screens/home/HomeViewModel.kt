@@ -158,16 +158,16 @@ class HomeViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            val appPreferences = appPreferencesRepository.appPreferencesFlow.first()
+            val selectedSource = getCorrectSelectedSource(
+                local = localUiState.value,
+                homeSource = appPreferences.homeSources,
+                homeRedditSearch = appPreferences.homeRedditSearch,
+            )
+
             localUiState.update {
-                val appPreferences = appPreferencesRepository.appPreferencesFlow.first()
                 it.copy(
-                    selectedSource = partial(
-                        getCorrectSelectedSource(
-                            local = it,
-                            homeSource = appPreferences.homeSources,
-                            homeRedditSearch = appPreferences.homeRedditSearch,
-                        ),
-                    ),
+                    selectedSource = partial(selectedSource),
                 )
             }
         }
@@ -390,15 +390,15 @@ class HomeViewModel @Inject constructor(
         appPreferencesRepository.updateHomeSources(currentSources)
 
         val prefs = appPreferencesRepository.appPreferencesFlow.first()
+        val selectedSource = getCorrectSelectedSource(
+            local = localUiState.value,
+            homeSource = currentSources,
+            homeRedditSearch = prefs.homeRedditSearch,
+        )
+
         localUiState.update {
             it.copy(
-                selectedSource = partial(
-                    getCorrectSelectedSource(
-                        local = it,
-                        homeSource = currentSources,
-                        homeRedditSearch = prefs.homeRedditSearch,
-                    ),
-                ),
+                selectedSource = partial(selectedSource),
             )
         }
         showManageSourcesDialog(false)
