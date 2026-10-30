@@ -93,13 +93,28 @@ fun WallpaperScreen(
     val onTagClick: (wallhavenTag: WallhavenTag) -> Unit = remember(
         uiState.prevMainWallhavenSearch,
     ) {
-        fn@{
+        fn@{ tag ->
+            if (tag.id <= 0L || tag.name.isBlank()) {
+                return@fn
+            }
+
             val prevSearch = uiState.prevMainWallhavenSearch
                 ?: MainSearchBar.Defaults.wallhavenSearch
+
             val search = prevSearch.copy(
-                query = "id:${it.id}",
-                meta = WallhavenTagSearchMeta(it),
+                query = "id:${tag.id}",
+                meta = WallhavenTagSearchMeta(tag),
             )
+
+            val isSameTagSearch = when (val meta = prevSearch.meta) {
+                is WallhavenTagSearchMeta -> meta.tag.id == tag.id
+                else -> prevSearch.query == search.query && prevSearch.meta == search.meta
+            }
+
+            if (isSameTagSearch) {
+                return@fn
+            }
+
             navController.search(search)
         }
     }
@@ -107,13 +122,29 @@ fun WallpaperScreen(
     val onUploaderClick: (WallhavenUploader) -> Unit = remember(
         uiState.prevMainWallhavenSearch,
     ) {
-        fn@{
+        fn@{ uploader ->
+            if (uploader.username.isBlank()) {
+                return@fn
+            }
+
             val prevSearch = uiState.prevMainWallhavenSearch
                 ?: MainSearchBar.Defaults.wallhavenSearch
+
             val search = prevSearch.copy(
-                query = "@${it.username}",
-                meta = WallhavenUploaderSearchMeta(uploader = it),
+                query = "@${uploader.username}",
+                meta = WallhavenUploaderSearchMeta(uploader = uploader),
             )
+
+            val isSameUploaderSearch = when (val meta = prevSearch.meta) {
+                is WallhavenUploaderSearchMeta ->
+                    meta.uploader.username == uploader.username
+                else -> prevSearch.query == search.query && prevSearch.meta == search.meta
+            }
+
+            if (isSameUploaderSearch) {
+                return@fn
+            }
+
             navController.search(search)
         }
     }
@@ -152,8 +183,9 @@ fun WallpaperScreen(
                 shareWallpaper(context, viewerViewModel, wallpaper)
             },
             onApplyWallpaperClick = {
-                val wallpaper = viewerUiState.galleryWallpapers?.getOrNull(viewerViewModel.currentGalleryPage)
-                    ?: viewerUiState.wallpaper ?: return@WallpaperViewer
+                val wallpaper = viewerUiState.galleryWallpapers?.getOrNull(
+                    viewerViewModel.currentGalleryPage,
+                ) ?: viewerUiState.wallpaper ?: return@WallpaperViewer
                 applyWallpaper(context, viewerViewModel, wallpaper)
             },
             onTagClick = onTagClick,

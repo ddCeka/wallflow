@@ -1,6 +1,8 @@
 package com.ammar.wallflow.ui.common
 
 import android.content.res.Configuration
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
@@ -10,8 +12,8 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.toShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,7 +28,7 @@ import com.ammar.wallflow.model.wallhaven.WallhavenAvatar
 import com.ammar.wallflow.model.wallhaven.WallhavenUploader
 import com.ammar.wallflow.ui.theme.WallFlowTheme
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun UploaderChip(
     modifier: Modifier = Modifier,
@@ -34,8 +36,11 @@ fun UploaderChip(
     onClick: () -> Unit = {},
 ) {
     AssistChip(
-        modifier = modifier,
-        onClick = onClick,
+        modifier = modifier.combinedClickable(
+            onClick = onClick,
+            onLongClick = onClick,
+        ),
+        onClick = {},
         leadingIcon = {
             AsyncImage(
                 modifier = Modifier
