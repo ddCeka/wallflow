@@ -2,24 +2,8 @@
   <img width="200" height="200" src=".github/assets/icon.svg" alt="WallFlow" title="WallFlow">
   <h1>WallFlow</h1>
   <div align="center">
-    <a href="https://github.com/ammargitham/WallFlow/releases/latest">
-      <img src="https://img.shields.io/github/v/release/ammargitham/wallflow.svg?style=for-the-badge&logo=GitHub&labelColor=black&label=Github&color=black" alt="Github">
-    </a>
-  </div>
-  <div align="center">
-    <a href="https://f-droid.org/packages/com.ammar.wallflow/">
-      <img src="https://img.shields.io/f-droid/v/com.ammar.wallflow?style=for-the-badge&logo=fdroid&logoColor=%23b1eb0b&label=f-droid (Regular)&labelColor=%23217ad3&color=%23217ad3" alt="F-Droid">
-    </a>
-    <a href="https://f-droid.org/packages/com.ammar.wallflow.plus/">
-      <img src="https://img.shields.io/f-droid/v/com.ammar.wallflow.plus?style=for-the-badge&logo=fdroid&logoColor=%23b1eb0b&label=f-droid (Plus)&labelColor=%23217ad3&color=%23217ad3" alt="F-Droid">
-    </a>
-  </div>
-  <div align="center">
-    <a href="https://github.com/ammargitham/WallFlow/actions/workflows/codeql.yml">
-      <img src="https://img.shields.io/github/actions/workflow/status/ammargitham/wallflow/codeql.yml?style=for-the-badge&label=CodeQL" alt="CodeQL" title="CodeQL">
-    </a>
-    <a href="https://hosted.weblate.org/projects/wallflow/">
-      <img src="https://img.shields.io/weblate/progress/wallflow?style=for-the-badge" alt="Weblate" title="Weblate">
+    <a href="https://github.com/ddCeka/wallflow/releases/latest">
+      <img src="https://img.shields.io/github/v/release/ddCeka/wallflow.svg?style=for-the-badge&logo=GitHub&labelColor=black&label=Github&color=black" alt="Github">
     </a>
   </div>
   <br/>
@@ -28,36 +12,14 @@
   </p>
 </div>
 <br/>
-<div align="center">
-  <img alt="devices" title="Devices" src=".github/assets/devices.png" width="500">
-</div>
 
 ## Downloads
 <div align="center">
-<a href="https://github.com/ammargitham/WallFlow/releases/latest">
+<a href="https://github.com/ddCeka/wallflow/releases/latest">
   <img height="80" alt="Get it on GitHub" title="Get it on GitHub" src="./.github/assets/get-it-on-github.png" />
 </a>
 
-|                                                                                                           Regular                                                                                                           |                                                                                                               Plus                                                                                                               |
-|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
-|                     [<img height="80" alt="Get it on GitHub" title="Get it on GitHub" src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" />](https://f-droid.org/packages/com.ammar.wallflow/)                      |                     [<img height="80" alt="Get it on GitHub" title="Get it on GitHub" src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" />](https://f-droid.org/packages/com.ammar.wallflow.plus/)                      |
-| [<img height="80" alt="Get it on IzzyOnDroid" title="Get it on IzzyOnDroid" src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png" />](https://apt.izzysoft.de/fdroid/index/apk/com.ammar.wallflow/) | [<img height="80" alt="Get it on IzzyOnDroid" title="Get it on IzzyOnDroid" src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroid.png" />](https://apt.izzysoft.de/fdroid/index/apk/com.ammar.wallflow.plus/) |
-
 \*[_What's the difference between Regular and Plus?_](#regular-vs-plus)
-
-</div>
-
-## Screenshots
-
-<div align="center">
-
-| <img src="./src/base/fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" alt="Home" width="150"> | <img src="./src/base/fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" alt="Filters" width="150"> | <img src="./src/base/fastlane/metadata/android/en-US/images/phoneScreenshots/2_reddit.png" alt="Filters" width="150"> | <img src="./src/base/fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" alt="Wallpaper Info" width="150"> |
-|:-----------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------------------------------------:|
-|                                                 <b>Home</b>                                                 |                                            <b>Wallhaven Filters</b>                                            |                                                 <b>Reddit Filters</b>                                                 |                                                 <b>Wallpaper Info</b>                                                 |
-
-| <img src="./src/base/fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" alt="Search History" width="150"> | <img src="./src/base/fastlane/metadata/android/en-US/images/phoneScreenshots/5.png" alt="Crop and Set Wallpaper" width="150"> | <img src="./src/base/fastlane/metadata/android/en-US/images/phoneScreenshots/6.png" alt="Settings 1" width="150"> |
-|:---------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------:|
-|                                                 <b>Search History</b>                                                 |                                                 <b>Crop and Set Wallpaper</b>                                                 |                                                  <b>Settings</b>                                                  |
 
 </div>
 
@@ -99,18 +61,6 @@ ADB command:
 
 - For Regular: `am broadcast --user 0 -a com.ammar.wallflow.ACTION_CHANGE_WALLPAPER com.ammar.wallflow`
 - For Plus: `am broadcast --user 0 -a com.ammar.wallflow.ACTION_CHANGE_WALLPAPER com.ammar.wallflow.plus`
-
-## Roadmap
-
-- [ ] Support foldables inner and outer screens together
-- [ ] More theme colors
-- [ ] Learn from favorites (on-device) and suggest wallpapers
-- [ ] Support Windows using [Kotlin multiplatform](https://kotlinlang.org/docs/multiplatform.html).
-
-## Help with translations
-<a href="https://hosted.weblate.org/engage/wallflow/">
-  <img src="https://hosted.weblate.org/widget/wallflow/287x66-grey.png" alt="Translation status" />
-</a>
 
 ## Built using
 
