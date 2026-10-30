@@ -1,18 +1,3 @@
-/*
- * Copyright 2021 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package com.ammar.wallflow.utils
 
 import android.Manifest
@@ -28,6 +13,12 @@ class StoragePermissions(private val context: Context) {
         private const val WRITE_EXTERNAL_STORAGE_MASK = 0b0011
         private const val SCOPED_STORAGE_READ_EXTERNAL_STORAGE_MASK = 0b0100
         private const val MANAGE_EXTERNAL_STORAGE_MASK = 0b1111
+
+        private val permissionsCache =
+            mutableMapOf<Triple<Action, List<FileType>, CreatedBy>, List<String>>()
+
+        private val accessCache =
+            mutableMapOf<Triple<Action, List<FileType>, CreatedBy>, Boolean>()
 
         internal fun getPermissionMask(
             action: Action,
@@ -120,6 +111,9 @@ class StoragePermissions(private val context: Context) {
             types: List<FileType>,
             createdBy: CreatedBy,
         ): List<String> {
+            val key = Triple(action, types.distinct(), createdBy)
+            permissionsCache[key]?.let { return it }
+
             val permissionMask = getPermissionMask(action, types, createdBy)
             val requiredPermissions = mutableListOf<String>()
 
@@ -156,7 +150,9 @@ class StoragePermissions(private val context: Context) {
                 }
             }
 
-            return requiredPermissions
+            val result = requiredPermissions.distinct()
+            permissionsCache[key] = result
+            return result
         }
 
         /**
@@ -219,13 +215,19 @@ class StoragePermissions(private val context: Context) {
      * Check if app can access shared files
      */
     fun hasAccess(action: Action, types: List<FileType>, createdBy: CreatedBy): Boolean {
+        val key = Triple(action, types.distinct(), createdBy)
+        accessCache[key]?.let { return it }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
             Environment.isExternalStorageManager()
         ) {
+            accessCache[key] = true
             return true
         }
 
-        return getPermissions(action, types, createdBy).all { hasPermission(it) }
+        val result = getPermissions(action, types, createdBy).all { hasPermission(it) }
+        accessCache[key] = result
+        return result
     }
 
     /**
