@@ -14,19 +14,28 @@ import com.ammar.wallflow.data.preferences.AppPreferences
 import com.ammar.wallflow.extensions.accessibleFolders
 import com.ammar.wallflow.model.local.LocalDirectory
 
-fun getRealPath(context: Context, uri: Uri) = try {
-    val docUri = if (DocumentsContractCompat.isTreeUri(uri)) {
-        DocumentsContract.buildDocumentUriUsingTree(
-            uri,
-            DocumentsContract.getTreeDocumentId(uri),
-        )
-    } else {
-        uri
+private val realPathCache = mutableMapOf<Uri, String?>()
+
+fun getRealPath(context: Context, uri: Uri): String? {
+    realPathCache[uri]?.let { return it }
+
+    val resolvedPath = try {
+        val docUri = if (DocumentsContractCompat.isTreeUri(uri)) {
+            DocumentsContract.buildDocumentUriUsingTree(
+                uri,
+                DocumentsContract.getTreeDocumentId(uri),
+            )
+        } else {
+            uri
+        }
+        getPath(context, docUri)
+    } catch (e: Exception) {
+        Log.e("getRealPath", "Error getting path", e)
+        null
     }
-    getPath(context, docUri)
-} catch (e: Exception) {
-    Log.e("getRealPath", "Error getting path", e)
-    null
+
+    realPathCache[uri] = resolvedPath
+    return resolvedPath
 }
 
 fun getPath(context: Context, uri: Uri): String? {
