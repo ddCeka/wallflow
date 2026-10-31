@@ -32,7 +32,8 @@ class RedditInterceptor @Inject constructor(
         val redditCookie = appPreferencesRepository.getRedditCookie()
         if (redditCookie.isNotBlank()) {
             newRequest = newRequest.newBuilder()
-                .header("Cookie", "session=$redditCookie")
+                .removeHeader("Cookie")
+                .header("Cookie", redditCookie)
                 .build()
         }
         return newRequest
