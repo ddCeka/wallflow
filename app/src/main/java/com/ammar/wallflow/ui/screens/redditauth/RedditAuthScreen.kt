@@ -98,9 +98,13 @@ private fun RedditAuthDialogContent(
                     Spacer(modifier = Modifier.weight(1f))
 
                     TextButton(onClick = {
-                        val cookies = CookieManager.getInstance().getCookie("https://www.reddit.com")
-                        val sessionCookie = parseSessionCookie(cookies)
-                        onDone(sessionCookie)
+                        val cookieHeader = CookieManager
+                            .getInstance()
+                            .getCookie("https://www.reddit.com")
+                            .orEmpty()
+                            .trim()
+
+                        onDone(cookieHeader)
                     }) {
                         Text(text = stringResource(R.string.confirm))
                     }
@@ -172,17 +176,3 @@ private fun RedditWebView(
         focusReq.requestFocus()
     }
 }
-
-@SuppressLint("ObsoleteSdkInt")
-private fun parseSessionCookie(cookies: String?): String {
-    if (cookies.isNullOrEmpty()) return ""
-    val parts = cookies.split(";")
-    for (part in parts) {
-        val trimmed = part.trim()
-        if (trimmed.startsWith("session=", ignoreCase = true)) {
-            return trimmed.substringAfter("=").trim()
-        }
-    }
-    return cookies
-}
-

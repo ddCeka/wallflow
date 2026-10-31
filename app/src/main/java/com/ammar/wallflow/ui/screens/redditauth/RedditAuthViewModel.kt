@@ -30,11 +30,14 @@ class RedditAuthViewModel @Inject constructor(
         initialValue = RedditAuthUiState(),
     )
 
-    fun saveCookie(cookie: String) {
+    fun saveCookie(cookieHeader: String) {
         viewModelScope.launch {
-            CookieManager.getInstance().removeAllCookies { }
-            appPreferencesRepository.updateRedditCookie(cookie)
-            globalErrorsRepository.removeErrorByType(GlobalErrorType.REDDIT_UNAUTHORISED)
+            val cleaned = cookieHeader.trim()
+            if (cleaned.isNotEmpty()) {
+                CookieManager.getInstance().removeAllCookies { }
+                appPreferencesRepository.updateRedditCookie(cleaned)
+                globalErrorsRepository.removeErrorByType(GlobalErrorType.REDDIT_UNAUTHORISED)
+            }
         }
     }
 }
