@@ -1,6 +1,7 @@
 package com.ammar.wallflow.ui.screens.redditauth
 
 import android.annotation.SuppressLint
+import android.util.Log
 import android.view.View
 import android.webkit.CookieManager
 import android.webkit.WebSettings
@@ -104,6 +105,7 @@ private fun RedditAuthDialogContent(
                             .orEmpty()
                             .trim()
 
+                        Log.d("RedditAuthDebug", "CookieManager cookies = [$cookieHeader]")
                         onDone(cookieHeader)
                     }) {
                         Text(text = stringResource(R.string.confirm))

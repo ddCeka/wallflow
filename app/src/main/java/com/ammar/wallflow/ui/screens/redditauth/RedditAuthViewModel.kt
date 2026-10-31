@@ -1,5 +1,6 @@
 package com.ammar.wallflow.ui.screens.redditauth
 
+import android.util.Log
 import android.webkit.CookieManager
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -33,6 +34,7 @@ class RedditAuthViewModel @Inject constructor(
     fun saveCookie(cookieHeader: String) {
         viewModelScope.launch {
             val cleaned = cookieHeader.trim()
+            Log.d("RedditAuthDebug", "Saved cookieHeader = [$cleaned]")
             if (cleaned.isNotEmpty()) {
                 CookieManager.getInstance().removeAllCookies { }
                 appPreferencesRepository.updateRedditCookie(cleaned)

@@ -1,5 +1,6 @@
 package com.ammar.wallflow.data.network.retrofit
 
+import android.util.Log
 import com.ammar.wallflow.data.repository.AppPreferencesRepository
 import com.ammar.wallflow.data.repository.GlobalErrorsRepository
 import com.ammar.wallflow.data.repository.GlobalErrorsRepository.GlobalErrorType
@@ -30,11 +31,13 @@ class RedditInterceptor @Inject constructor(
     private suspend fun appendCookie(request: Request): Request {
         var newRequest = request
         val redditCookie = appPreferencesRepository.getRedditCookie()
+        Log.d("RedditAuthDebug", "Request: ${request.url} | stored cookie = [$redditCookie]")
         if (redditCookie.isNotBlank()) {
             newRequest = newRequest.newBuilder()
                 .removeHeader("Cookie")
                 .header("Cookie", redditCookie)
                 .build()
+            Log.d("RedditAuthDebug", "Outgoing Cookie header = [${newRequest.header("Cookie")}]")
         }
         return newRequest
     }
