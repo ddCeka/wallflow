@@ -36,9 +36,24 @@ class RedditInterceptor @Inject constructor(
 
     private suspend fun appendCookie(request: Request): Request {
         val redditCookie = appPreferencesRepository.getRedditCookie()
+        val targetUrl = if (request.url.host == "reddit.com") {
+            request.url.newBuilder()
+                .host("www.reddit.com")
+                .build()
+        } else {
+            request.url
+        }
         val builder = request.newBuilder()
-            .header("User-Agent", "android:com.ammar.wallflow:v1.0 (by /u/ddCeka)")
+            .url(targetUrl)
+            .header(
+                "User-Agent",
+                "Mozilla/5.0 (Linux; Android 14; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36",
+            )
             .header("Accept", "application/json")
+            .header("Accept-Language", "en-US,en;q=0.9")
+            .header("Sec-Fetch-Dest", "empty")
+            .header("Sec-Fetch-Mode", "cors")
+            .header("Sec-Fetch-Site", "same-origin")
         Log.d("RedditAuthDebug", "Request: ${request.url} | stored cookie = [$redditCookie]")
         if (redditCookie.isNotBlank()) {
             builder.removeHeader("Cookie")

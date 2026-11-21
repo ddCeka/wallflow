@@ -102,17 +102,21 @@ private fun RedditAuthDialogContent(
                         val cookieManager = CookieManager.getInstance()
                         cookieManager.flush()
 
-                        val wwwCookies = cookieManager.getCookie("https://www.reddit.com").orEmpty().trim()
-                        val rootCookies = cookieManager.getCookie("https://reddit.com").orEmpty().trim()
-                        val cookieHeader = wwwCookies.ifEmpty { rootCookies }
-                        val hasAuth = cookieHeader.contains("reddit_session=") || cookieHeader.contains("token_v2=")
+                        val rawCookies = (
+                             cookieManager.getCookie("https://www.reddit.com")
+                                 ?: cookieManager.getCookie("https://reddit.com")
+                             )
+                             .orEmpty()
+                             .trim()
 
+                        val cleanedCookies = filterRedditAuthCookies(rawCookies)
+                        val hasAuth = cleanedCookies.contains("reddit_session=") || cleanedCookies.contains("token_v2=")
                         Log.d(
                             "RedditAuthDebug",
-                            "CookieManager flushed | www = [$wwwCookies] | root = [$rootCookies] | hasAuth = [$hasAuth]",
+                            "CookieManager flushed | raw = [$rawCookies] | cleaned = [$cleanedCookies] | hasAuth = [$hasAuth]",
                         )
                         if (hasAuth) {
-                            onDone(cookieHeader)
+                            onDone(cleanedCookies)
                         } else {
                             context.toast("Login session not found yet. Finish logging in first.")
                         }
@@ -186,4 +190,24 @@ private fun RedditWebView(
     LaunchedEffect(Unit) {
         focusReq.requestFocus()
     }
+}
+
+private val ALLOWED_REDDIT_COOKIES = setOf(
+    "reddit_session",
+    "token_v2",
+    "loid",
+    "edgebucket",
+    "csrf_token",
+    "session_tracker",
+)
+
+private fun filterRedditAuthCookies(rawCookies: String): String {
+    if (rawCookies.isBlank()) return ""
+    return rawCookies.split(";")
+        .map { it.trim() }
+        .filter { part ->
+            val key = part.substringBefore("=", "").trim().lowercase()
+            key in ALLOWED_REDDIT_COOKIES
+        }
+        .joinToString("; ")
 }
