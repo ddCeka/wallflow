@@ -29,16 +29,16 @@ class RedditInterceptor @Inject constructor(
         } else {
             "OK"
         }
-        Log.d("RedditAuthDebug", "Response: ${response.code} ${response.message} | url = ${request.url} | body = [$bodyPreview]")
+        Log.d("RedditAuthDebug", "Response: ${response.code} ${response.message} | url = ${newRequest.url} | body = [$bodyPreview]")
         checkForErrors(response)
         return response
     }
 
     private suspend fun appendCookie(request: Request): Request {
         val redditCookie = appPreferencesRepository.getRedditCookie()
-        val targetUrl = if (request.url.host == "reddit.com") {
+        val targetUrl = if (request.url.host == "reddit.com" || request.url.host == "www.reddit.com") {
             request.url.newBuilder()
-                .host("www.reddit.com")
+                .host("old.reddit.com")
                 .build()
         } else {
             request.url
@@ -51,10 +51,11 @@ class RedditInterceptor @Inject constructor(
             )
             .header("Accept", "application/json")
             .header("Accept-Language", "en-US,en;q=0.9")
+            .header("Referer", "https://old.reddit.com/")
             .header("Sec-Fetch-Dest", "empty")
             .header("Sec-Fetch-Mode", "cors")
             .header("Sec-Fetch-Site", "same-origin")
-        Log.d("RedditAuthDebug", "Request: ${request.url} | stored cookie = [$redditCookie]")
+        Log.d("RedditAuthDebug", "Request: $targetUrl | stored cookie = [$redditCookie]")
         if (redditCookie.isNotBlank()) {
             builder.removeHeader("Cookie")
                 .header("Cookie", redditCookie)
