@@ -36,25 +36,22 @@ class RedditInterceptor @Inject constructor(
 
     private suspend fun appendCookie(request: Request): Request {
         val redditCookie = appPreferencesRepository.getRedditCookie()
-        val targetUrl = if (request.url.host == "reddit.com" || request.url.host == "www.reddit.com") {
-            request.url.newBuilder()
-                .host("old.reddit.com")
-                .build()
-        } else {
-            request.url
+        val urlBuilder = request.url.newBuilder()
+        if (request.url.host == "reddit.com" || request.url.host == "old.reddit.com") {
+            urlBuilder.host("www.reddit.com")
         }
+        if (request.url.encodedPath.endsWith(".json") && request.url.queryParameter("raw_json") == null) {
+            urlBuilder.addQueryParameter("raw_json", "1")
+        }
+        val targetUrl = urlBuilder.build()
+
         val builder = request.newBuilder()
             .url(targetUrl)
             .header(
                 "User-Agent",
-                "Mozilla/5.0 (Linux; Android 14; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36",
+                "android:com.ammar.wallflow:v1.0 (by /u/ddCeka)",
             )
             .header("Accept", "application/json")
-            .header("Accept-Language", "en-US,en;q=0.9")
-            .header("Referer", "https://old.reddit.com/")
-            .header("Sec-Fetch-Dest", "empty")
-            .header("Sec-Fetch-Mode", "cors")
-            .header("Sec-Fetch-Site", "same-origin")
         Log.d("RedditAuthDebug", "Request: $targetUrl | stored cookie = [$redditCookie]")
         if (redditCookie.isNotBlank()) {
             builder.removeHeader("Cookie")
