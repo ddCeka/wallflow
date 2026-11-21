@@ -24,22 +24,32 @@ class RedditInterceptor @Inject constructor(
         }
         val newRequest = runBlocking { appendCookie(request) }
         val response = chain.proceed(newRequest)
+        val bodyPreview = if (!response.isSuccessful) {
+            runCatching { response.peekBody(512).string() }.getOrDefault("unreadable")
+        } else {
+            "OK"
+        }
+        Log.d("RedditAuthDebug", "Response: ${response.code} ${response.message} | url = ${request.url} | body = [$bodyPreview]")
         checkForErrors(response)
         return response
     }
 
     private suspend fun appendCookie(request: Request): Request {
-        var newRequest = request
         val redditCookie = appPreferencesRepository.getRedditCookie()
+        val builder = request.newBuilder()
+            .header("User-Agent", "android:com.ammar.wallflow:v1.0 (by /u/ddCeka)")
+            .header("Accept", "application/json")
         Log.d("RedditAuthDebug", "Request: ${request.url} | stored cookie = [$redditCookie]")
         if (redditCookie.isNotBlank()) {
-            newRequest = newRequest.newBuilder()
-                .removeHeader("Cookie")
+            builder.removeHeader("Cookie")
                 .header("Cookie", redditCookie)
-                .build()
-            Log.d("RedditAuthDebug", "Outgoing Cookie header = [${newRequest.header("Cookie")}]")
         }
-        return newRequest
+        val builtRequest = builder.build()
+        Log.d(
+            "RedditAuthDebug",
+            "Outgoing headers | User-Agent = [${builtRequest.header("User-Agent")}] | Cookie = [${builtRequest.header("Cookie")}]",
+        )
+        return builtRequest
     }
 
     private fun checkForErrors(response: Response) {

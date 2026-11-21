@@ -23,12 +23,6 @@ internal fun AccountContent(
     onRedditLoginItemClick: () -> Unit = {},
     redditCookie: String = "",
 ) {
-    WallhavenApiKeyItem(
-        modifier = modifier.clickable(
-            onClick = onWallhavenApiKeyItemClick,
-        ),
-        isExpanded = isExpanded,
-    )
     val isLoggedIn = redditCookie.isNotBlank()
 
     Column(modifier = modifier) {

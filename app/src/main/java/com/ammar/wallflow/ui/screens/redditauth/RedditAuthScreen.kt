@@ -1,6 +1,5 @@
 package com.ammar.wallflow.ui.screens.redditauth
 
-import android.annotation.SuppressLint
 import android.util.Log
 import android.view.View
 import android.webkit.CookieManager
@@ -34,6 +33,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.webkit.WebViewClientCompat
 import com.ammar.wallflow.R
+import com.ammar.wallflow.extensions.toast
 import com.ammar.wallflow.navigation.AppNavGraphs.RootNavGraph
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
@@ -99,14 +99,23 @@ private fun RedditAuthDialogContent(
                     Spacer(modifier = Modifier.weight(1f))
 
                     TextButton(onClick = {
-                        val cookieHeader = CookieManager
-                            .getInstance()
-                            .getCookie("https://www.reddit.com")
-                            .orEmpty()
-                            .trim()
+                        val cookieManager = CookieManager.getInstance()
+                        cookieManager.flush()
 
-                        Log.d("RedditAuthDebug", "CookieManager cookies = [$cookieHeader]")
-                        onDone(cookieHeader)
+                        val wwwCookies = cookieManager.getCookie("https://www.reddit.com").orEmpty().trim()
+                        val rootCookies = cookieManager.getCookie("https://reddit.com").orEmpty().trim()
+                        val cookieHeader = wwwCookies.ifEmpty { rootCookies }
+                        val hasAuth = cookieHeader.contains("reddit_session=") || cookieHeader.contains("token_v2=")
+
+                        Log.d(
+                            "RedditAuthDebug",
+                            "CookieManager flushed | www = [$wwwCookies] | root = [$rootCookies] | hasAuth = [$hasAuth]",
+                        )
+                        if (hasAuth) {
+                            onDone(cookieHeader)
+                        } else {
+                            context.toast("Login session not found yet. Finish logging in first.")
+                        }
                     }) {
                         Text(text = stringResource(R.string.confirm))
                     }
@@ -167,7 +176,7 @@ private fun RedditWebView(
         modifier = modifier.focusRequester(focusReq),
         factory = { webView },
         update = { wv ->
-            if (wv.url != initialUrl) {
+            if (wv.url == null) {
                 wv.loadUrl(initialUrl)
             }
             wv.requestFocus()
