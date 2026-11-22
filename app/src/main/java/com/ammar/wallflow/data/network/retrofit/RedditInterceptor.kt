@@ -36,33 +36,43 @@ class RedditInterceptor @Inject constructor(
 
     private suspend fun appendCookie(request: Request): Request {
         val redditCookie = appPreferencesRepository.getRedditCookie()
-        val urlBuilder = request.url.newBuilder()
-        if (request.url.host == "reddit.com" || request.url.host == "old.reddit.com") {
-            urlBuilder.host("www.reddit.com")
+        val tokenV2 = extractCookieValue(redditCookie, "token_v2")
+        val targetUrlBuilder = request.url.newBuilder()
+        if (
+            request.url.host == "reddit.com" ||
+            request.url.host == "www.reddit.com" ||
+            request.url.host == "old.reddit.com"
+        ) {
+            targetUrlBuilder.host("oauth.reddit.com")
         }
         if (request.url.encodedPath.endsWith(".json") && request.url.queryParameter("raw_json") == null) {
-            urlBuilder.addQueryParameter("raw_json", "1")
+            targetUrlBuilder.addQueryParameter("raw_json", "1")
         }
-        val targetUrl = urlBuilder.build()
-
+        val targetUrl = targetUrlBuilder.build()
         val builder = request.newBuilder()
             .url(targetUrl)
-            .header(
-                "User-Agent",
-                "android:com.ammar.wallflow:v1.0 (by /u/ddCeka)",
-            )
+            .header("User-Agent", "android:com.ammar.wallflow:v1.0 (by /u/ddCeka)")
             .header("Accept", "application/json")
-        Log.d("RedditAuthDebug", "Request: $targetUrl | stored cookie = [$redditCookie]")
-        if (redditCookie.isNotBlank()) {
-            builder.removeHeader("Cookie")
-                .header("Cookie", redditCookie)
+            .removeHeader("Cookie")
+        if (!tokenV2.isNullOrBlank()) {
+            builder.header("Authorization", "Bearer $tokenV2")
         }
         val builtRequest = builder.build()
         Log.d(
             "RedditAuthDebug",
-            "Outgoing headers | User-Agent = [${builtRequest.header("User-Agent")}] | Cookie = [${builtRequest.header("Cookie")}]",
+            "Request: $targetUrl | token_v2 present = [${!tokenV2.isNullOrBlank()}] | User-Agent = [${builtRequest.header("User-Agent")}]",
         )
         return builtRequest
+    }
+
+    private fun extractCookieValue(cookieHeader: String, name: String): String? {
+        if (cookieHeader.isBlank()) return null
+        return cookieHeader.split(";")
+            .map { it.trim() }
+            .firstOrNull { it.startsWith("$name=") }
+            ?.substringAfter("=")
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
     }
 
     private fun checkForErrors(response: Response) {
